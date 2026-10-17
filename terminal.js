@@ -66,6 +66,8 @@
   const personalizedPrompt = new MutationObserver(() => {
     const prompt = output.querySelector('.terminal-confirmation > span');
     if (prompt) prompt.firstChild.textContent = `${activeProfile || 'investigador'}@blackhearts:~$ `;
+    const welcome = output.querySelector('.terminal-confirmation > p');
+    if (welcome) welcome.textContent = `Bem-vindo, ${activeProfile || 'Investigador'}. Seu ambiente operacional está pronto.`;
   });
   personalizedPrompt.observe(output, {childList:true});
   panel.querySelector('[data-close]').onclick=()=>{generation++;cancelAnimationFrame(frame);finish();panel.hidden=true;task.hidden=true;};
