@@ -45,10 +45,10 @@
     window.disposeCaseWorkspace?.();
     const record = cases.find(row=>row.id===active);
     const sub = record?.folders.find(row=>row.id===folder);
-    win.classList.toggle('investigation-workspace-window',!!record);
-    if (record) {
+    win.classList.toggle('investigation-workspace-window',!!record&&folder==='@investigation');
+    if (record&&folder==='@investigation') {
       window.renderCaseWorkspace(content,record,{
-        back:()=>{active=null;folder=null;render();},
+        back:()=>{folder=null;render();},
         editCase:()=>edit('case',record.id),
         save:updated=>{const next=cases.map(row=>row.id===updated.id?updated:row);persist(next);},
         notes:openQuickNotes
@@ -106,6 +106,15 @@
       const description = card.querySelector('.case-card-open p');
       if (row && description) description.textContent = `Investigação sobre: ${row.name}`;
     });
+  }
+  function addInvestigationSubfolder() {
+    if(!active||folder||content.querySelector('[data-investigation-folder]'))return;
+    const grid=content.querySelector('.cases-grid');if(!grid)return;
+    const button=document.createElement('button');button.type='button';button.className='case-folder';button.dataset.investigationFolder='true';
+    button.innerHTML=desktopSymbol('folder')+'<strong>Quadro de investigação</strong>';
+    button.onclick=event=>{event.stopPropagation();folder='@investigation';render();};
+    grid.prepend(button);
+    content.querySelector('.cases-empty')?.remove();
   }
   const isCaseAdmin = () => document.querySelector('#taskbar-username').textContent.trim().toLowerCase() === 'sakai';
   const passwordDigest = async (password, salt) => {
@@ -197,7 +206,7 @@
     quickNotesDialog.querySelectorAll('[data-remove-note]').forEach(button=>button.onclick=()=>{if(!isCaseAdmin()||!confirm('Excluir este recado?'))return;try{localStorage.setItem('bh-case-quick-notes',JSON.stringify(readCaseNotes().filter(note=>note.id!==button.dataset.removeNote)));openQuickNotes();}catch{quickNotesDialog.querySelector('.quick-note-error').textContent='Não foi possível excluir o recado.';}});
     if(!quickNotesDialog.open)quickNotesDialog.showModal();
   }
-  new MutationObserver(()=>{addDeleteButtons();addPasswordButtons();alignCaseActions();addClassificationFilter();updateCaseDescriptions();addCasePhotos();enhanceSearchTools();}).observe(content, {childList:true});
+  new MutationObserver(()=>{addDeleteButtons();addPasswordButtons();alignCaseActions();addClassificationFilter();updateCaseDescriptions();addCasePhotos();enhanceSearchTools();addInvestigationSubfolder();}).observe(content, {childList:true});
   // The desktop is rendered before login; refresh admin actions once the user is known.
   new MutationObserver(() => render()).observe(document.querySelector('#taskbar-username'), {childList:true,characterData:true,subtree:true});
   const editor=document.createElement('dialog'); editor.className='rename-icon-dialog case-editor'; document.body.append(editor);
