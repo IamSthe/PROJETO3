@@ -37,7 +37,7 @@
   function searchableCase(row){
     const texts=[];
     function visit(item){if(!item||typeof item!=='object')return;for(const [key,value] of Object.entries(item)){if(['photo','passwordHash','passwordSalt','data'].includes(key))continue;if(typeof value==='string')texts.push(value);else if(Array.isArray(value))value.forEach(visit);else if(value&&typeof value==='object')visit(value);}}
-    visit(row);return normalizeSearch(texts.join(' '));
+    visit(row);texts.push('Investigação sobre: '+row.name);return normalizeSearch(texts.join(' '));
   }
   const statuses = {active:'Ativas',priority:'Prioridade',archived:'Arquivadas',closed:'Encerradas'};
   function persist(next) { localStorage.setItem('bh-cases-v1',JSON.stringify(next)); cases=next; }
@@ -88,6 +88,13 @@
     select.innerHTML='<option value="all">Todas as classificações</option><option value="legal">Legal</option><option value="illegal">Ilegal</option>';select.value=classification;
     select.onchange=()=>{classification=select.value;render();};search.after(select);
     content.querySelectorAll('.case-card').forEach(card=>{const row=cases.find(item=>item.id===card.querySelector('[data-case]').dataset.case);const text=card.querySelector('.case-card-open>span');text.textContent=((row.classification||'legal')==='legal'?'⚖ LEGAL · ':'☠ ILEGAL · ')+(statuses[row.status]||'Ativas');text.dataset.status=row.status;});
+  }
+  function updateCaseDescriptions() {
+    content.querySelectorAll('.case-card').forEach(card => {
+      const row = cases.find(item => item.id === card.querySelector('[data-case]').dataset.case);
+      const description = card.querySelector('.case-card-open p');
+      if (row && description) description.textContent = `Investigação sobre: ${row.name}`;
+    });
   }
   const isCaseAdmin = () => document.querySelector('#taskbar-username').textContent.trim().toLowerCase() === 'sakai';
   const passwordDigest = async (password, salt) => {
@@ -179,7 +186,7 @@
     quickNotesDialog.querySelectorAll('[data-remove-note]').forEach(button=>button.onclick=()=>{if(!isCaseAdmin()||!confirm('Excluir este recado?'))return;try{localStorage.setItem('bh-case-quick-notes',JSON.stringify(readCaseNotes().filter(note=>note.id!==button.dataset.removeNote)));openQuickNotes();}catch{quickNotesDialog.querySelector('.quick-note-error').textContent='Não foi possível excluir o recado.';}});
     if(!quickNotesDialog.open)quickNotesDialog.showModal();
   }
-  new MutationObserver(()=>{addDeleteButtons();addPasswordButtons();alignCaseActions();addClassificationFilter();addCasePhotos();enhanceSearchTools();}).observe(content, {childList:true});
+  new MutationObserver(()=>{addDeleteButtons();addPasswordButtons();alignCaseActions();addClassificationFilter();updateCaseDescriptions();addCasePhotos();enhanceSearchTools();}).observe(content, {childList:true});
   // The desktop is rendered before login; refresh admin actions once the user is known.
   new MutationObserver(() => render()).observe(document.querySelector('#taskbar-username'), {childList:true,characterData:true,subtree:true});
   const editor=document.createElement('dialog'); editor.className='rename-icon-dialog case-editor'; document.body.append(editor);
