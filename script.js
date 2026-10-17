@@ -307,11 +307,53 @@ renameDialog.addEventListener('close', () => renameTarget?.focus());
 document.addEventListener('pointerdown', event => { if (!iconContextMenu.contains(event.target)) iconContextMenu.hidden = true; });
 document.addEventListener('keydown', event => { if (event.key === 'Escape') iconContextMenu.hidden = true; });
 window.addEventListener('resize', () => iconContextMenu.hidden = true);
-document.querySelector('#start-button').addEventListener('click', () => {
-  const win = document.querySelector('[data-window="case"]');
-  win.classList.remove('hidden','minimized');
-  bringForward(win);
+const startButton = document.querySelector('#start-button');
+const startMenu = document.createElement('section');
+startMenu.className = 'start-menu'; startMenu.id = 'start-menu'; startMenu.hidden = true;
+startMenu.setAttribute('aria-label','Menu de aplicativos');
+const menuCategories = [
+  ['apps','▦','Todos os Aplicativos',['case','evidence','database','cameras','audio','trash']],
+  ['investigation','▰','Investigação',['case','evidence','database']],
+  ['tools','⚒','Ferramentas',['database']],
+  ['system','⚙','Sistema',['trash']],
+  ['network','◎','Rede',[]],
+  ['media','▷','Multimídia',['cameras','audio']],
+  ['admin','⛨','Administração',[]]
+];
+startMenu.innerHTML = '<header><img src="assents/simbolo.png" alt="Logo Blackhearts"><div><strong>BLACKHEARTS</strong><small>DEPARTAMENTO DE INVESTIGAÇÃO</small></div></header><nav></nav><footer><span class="start-profile-avatar"></span><div><strong class="start-profile-name"></strong><small>Investigador · Nível 3</small></div><button type="button" class="start-power" aria-label="Bloquear sessão" title="Bloquear sessão">⏻</button></footer>';
+const startNav = startMenu.querySelector('nav');
+menuCategories.forEach(([key,symbol,title,apps]) => {
+  const group = document.createElement('div'); group.className = 'start-menu-group';
+  const button = document.createElement('button'); button.type='button'; button.className='start-category'; button.setAttribute('aria-expanded','false');
+  button.innerHTML=`<span class="start-category-icon">${symbol}</span><span>${title}</span><b>›</b>`;
+  const submenu=document.createElement('div');submenu.className='start-submenu';submenu.hidden=true;
+  button.onclick=()=>{
+    const opening=submenu.hidden;
+    startNav.querySelectorAll('.start-submenu').forEach(item=>item.hidden=true);
+    startNav.querySelectorAll('.start-category').forEach(item=>item.setAttribute('aria-expanded','false'));
+    submenu.replaceChildren();
+    apps.forEach(app=>{const entry=document.createElement('button');entry.type='button';entry.textContent=labels[app];entry.onclick=()=>{closeStartMenu();document.querySelector(`.desktop-icon[data-open="${app}"]`)?.click();};submenu.append(entry);});
+    if(key==='network'){const info=document.createElement('p');info.textContent=navigator.onLine?'● Conexão ativa · ONLINE':'Sem conexão · OFFLINE';submenu.append(info);}
+    if(key==='admin'){const info=document.createElement('p');info.textContent='Gerencie os casos, senhas e subpastas pelos cartões de Casos.';submenu.append(info);}
+    submenu.hidden=!opening;button.setAttribute('aria-expanded',String(opening));
+  };
+  group.append(button,submenu);startNav.append(group);
 });
+desktop.append(startMenu);
+startButton.setAttribute('aria-controls','start-menu');startButton.setAttribute('aria-expanded','false');
+function closeStartMenu(){startMenu.hidden=true;startButton.setAttribute('aria-expanded','false');}
+startButton.addEventListener('click',()=>{
+  const opening=startMenu.hidden;
+  startMenu.hidden=!opening;startButton.setAttribute('aria-expanded',String(opening));
+  startMenu.querySelector('.start-profile-name').textContent=activeProfile || 'Investigador';
+  const photo=startMenu.querySelector('.start-profile-avatar');photo.replaceChildren();
+  photo.append(avatarButton.firstElementChild.cloneNode(true));
+});
+document.addEventListener('pointerdown',event=>{if(!startMenu.contains(event.target)&&!startButton.contains(event.target))closeStartMenu();});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!startMenu.hidden){closeStartMenu();startButton.focus();}});
+startMenu.querySelector('.start-power').onclick=()=>{
+  closeStartMenu();desktop.classList.remove('ready');desktop.setAttribute('aria-hidden','true');boot.classList.remove('done','loading');startupLoading.setAttribute('aria-hidden','true');passwordInput.value='';passwordInput.focus();
+};
 document.querySelector('#desktop-clock-slot').append(document.querySelector('#clock'));
 function updateClock(){const clock=document.querySelector('#clock');const now=new Date();clock.querySelector('strong').textContent=new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit',hour12:false}).format(now);clock.querySelector('small').textContent=new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short',year:'numeric'}).format(now).replace(/ de /g,' ').replace('.','').toUpperCase()}
 updateClock(); setInterval(updateClock,1000);
