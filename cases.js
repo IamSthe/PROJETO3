@@ -44,6 +44,36 @@
     const rows=cases.filter(row=>(filter==='all'||row.status===filter)&&`${row.name} ${row.code} ${row.description}`.toLocaleLowerCase('pt-BR').includes(query.toLocaleLowerCase('pt-BR')));
     content.innerHTML=`<div class="cases-heading"><div><h2>Casos</h2><p>${cases.length} casos · ${cases.filter(row=>row.status==='active').length} ativos</p></div><button data-new-case>＋ NOVO CASO</button></div><input class="cases-search" placeholder="Buscar por nome, código ou descrição…" aria-label="Buscar casos" value="${escape(query)}"><nav class="cases-tabs">${Object.entries({all:'Todas',...statuses}).map(([key,name])=>`<button data-filter="${key}" class="${filter===key?'selected':''}">${name} <small>${cases.filter(row=>key==='all'||row.status===key).length}</small></button>`).join('')}</nav><div class="cases-grid">${rows.map(row=>`<article class="case-card"><button class="case-card-open" data-case="${row.id}"><small><i class="case-state ${row.status}"></i>${escape(row.code)}</small><h3>${escape(row.name)}</h3><p>${escape(row.description)}</p><span>${escape(statuses[row.status] || 'Ativas')}</span></button><button class="case-edit" data-edit-id="${row.id}" aria-label="Editar ${escape(row.name)}">✎</button></article>`).join('')||'<p class="cases-empty">Nenhum caso encontrado.</p>'}</div>`;
   }
+  const deleteDialog = document.createElement('dialog');
+  deleteDialog.className = 'rename-icon-dialog';
+  deleteDialog.innerHTML = '<h2>Excluir caso?</h2><p class="case-delete-message"></p><form method="dialog"><div class="case-delete-actions"><button value="cancel">Cancelar</button><button value="delete" class="confirm-delete-case">Excluir tudo</button></div></form>';
+  document.body.append(deleteDialog);
+  let deletingCaseId = null;
+  deleteDialog.addEventListener('close', () => {
+    if (deleteDialog.returnValue !== 'delete' || !deletingCaseId) return;
+    try {
+      persist(cases.filter(row => row.id !== deletingCaseId));
+      if (active === deletingCaseId) { active = null; folder = null; }
+      render(); showToast('Caso e todas as subpastas excluídos.');
+    } catch { showToast('Não foi possível excluir o caso neste navegador.'); }
+    deletingCaseId = null;
+  });
+  const addDeleteButtons = () => content.querySelectorAll('.case-card').forEach(card => {
+    if (card.querySelector('.case-delete')) return;
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'case-delete'; button.textContent = '×';
+    const id = card.querySelector('[data-case]').dataset.case;
+    const row = cases.find(item => item.id === id);
+    button.setAttribute('aria-label', 'Excluir caso ' + row.name); button.title = 'Excluir caso e subpastas';
+    button.addEventListener('click', event => {
+      event.stopPropagation(); deletingCaseId = id;
+      deleteDialog.querySelector('.case-delete-message').textContent = `Excluir “${row.name}” e todas as suas subpastas e observações? Esta ação não pode ser desfeita.`;
+      deleteDialog.returnValue = ''; deleteDialog.showModal();
+      deleteDialog.querySelector('[value="cancel"]').focus();
+    });
+    card.append(button);
+  });
+  new MutationObserver(addDeleteButtons).observe(content, {childList:true});
   const editor=document.createElement('dialog'); editor.className='rename-icon-dialog case-editor'; document.body.append(editor);
   function edit(type,id) {
     const record=cases.find(row=>row.id===(id||active));
