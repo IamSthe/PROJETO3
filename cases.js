@@ -42,8 +42,19 @@
   const statuses = {active:'Ativas',priority:'Prioridade',archived:'Arquivadas',closed:'Encerradas'};
   function persist(next) { localStorage.setItem('bh-cases-v1',JSON.stringify(next)); cases=next; }
   function render() {
+    window.disposeCaseWorkspace?.();
     const record = cases.find(row=>row.id===active);
     const sub = record?.folders.find(row=>row.id===folder);
+    win.classList.toggle('investigation-workspace-window',!!record);
+    if (record) {
+      window.renderCaseWorkspace(content,record,{
+        back:()=>{active=null;folder=null;render();},
+        editCase:()=>edit('case',record.id),
+        save:updated=>{const next=cases.map(row=>row.id===updated.id?updated:row);persist(next);},
+        notes:openQuickNotes
+      });
+      return;
+    }
     if (record) {
       content.innerHTML = `<button class="case-back" data-back>← ${sub?escape(record.name):'Todos os casos'}</button><div class="cases-heading"><div><h2>${escape(sub?.name || record.name)}</h2><p>${escape(sub?'Subpasta de '+record.name:record.description)}</p></div><button data-edit="${sub?'folder':'case'}">Editar</button></div>${sub?`<div class="case-notes">${escape(sub.notes || 'Nenhuma observação cadastrada.')}</div>`:`<button data-new-folder>＋ Nova subpasta</button><div class="cases-grid">${record.folders.map(item=>`<button class="case-folder" data-folder="${item.id}">${desktopSymbol('folder')}<strong>${escape(item.name)}</strong></button>`).join('') || '<p class="cases-empty">Crie subpastas para organizar este caso.</p>'}</div>`}`;
       return;
