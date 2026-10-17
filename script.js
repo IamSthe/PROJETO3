@@ -9,31 +9,11 @@ for (let index = 0; index < 84; index += 1) {
   star.style.setProperty('--opacity', `${.22 + Math.random() * .62}`);
   star.style.setProperty('--duration', `${18 + Math.random() * 28}s`);
   star.style.setProperty('--delay', `${-Math.random() * 42}s`);
-  const driftX = -20 + Math.random() * 40;
-  const driftY = -28 + Math.random() * 56;
-  star.style.setProperty('--drift-x', `${driftX}px`);
-  star.style.setProperty('--drift-y', `${driftY}px`);
-  star.style.setProperty('--drift-half-x', `${driftX * .48}px`);
-  star.style.setProperty('--drift-half-y', `${driftY * .48}px`);
-  star.style.setProperty('--depth', `${.25 + Math.random() * .9}`);
   star.style.left = `${Math.random() * 100}%`;
-  star.style.top = `${Math.random() * 100}%`;
+  star.style.top = '100%';
   starField.append(star);
 }
 
-let pointerFrame;
-window.addEventListener('pointermove', event => {
-  const moveX = (event.clientX / innerWidth - .5) * -18;
-  const moveY = (event.clientY / innerHeight - .5) * -13;
-  cancelAnimationFrame(pointerFrame);
-  pointerFrame = requestAnimationFrame(() => {
-    starField.querySelectorAll('.star').forEach(star => {
-      const depth = Number(star.style.getPropertyValue('--depth')) || 1;
-      star.style.setProperty('--parallax-x', `${moveX * depth}px`);
-      star.style.setProperty('--parallax-y', `${moveY * depth}px`);
-    });
-  });
-});
 
 function startDesktop() {
   boot.classList.add('done');
