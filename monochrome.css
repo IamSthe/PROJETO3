@@ -24,6 +24,7 @@ body{background:#090909;color:#eee}
 .iw-sidebar small,.iw-details>button small{color:#888}
 .iw-case-identity{background:linear-gradient(135deg,#202020,#141414);border-color:#555}
 .iw-case-identity strong{color:#eee}.iw-case-identity p{color:#aaa}
+.iw-case-identity>img{height:auto;max-height:220px;object-fit:contain;background:#0a0a0a}
 .iw-board-heading{border-color:#333}.iw-board-heading input{background:#101010;border-color:#444;color:#ddd}
 .iw-board-heading button,.iw-summary button,.iw-empty button,.iw-folder-content button,.iw-media h3 button{background:#202020;border-color:#555;color:#ddd}
 .iw-board{background-color:#0a0a0a;background-image:radial-gradient(#ffffff22 .7px,transparent .7px)}
