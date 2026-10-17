@@ -315,16 +315,17 @@ const menuCategories = [
   ['apps','▦','Todos os Aplicativos',['case','evidence','database','cameras','audio','trash']],
   ['investigation','▰','Investigação',['case','evidence','database']],
   ['tools','⚒','Ferramentas',['database']],
-  ['terminal','terminal','Terminal',[]],
   ['system','⚙','Sistema',['trash']],
   ['network','◎','Rede',[]],
   ['media','▷','Multimídia',['cameras','audio']],
-  ['admin','⛨','Administração',[]]
+  ['admin','⛨','Administração',[]],
+  ['terminal','terminal','Terminal',[]]
 ];
 startMenu.innerHTML = '<header><img src="assents/simbolo.png" alt="Logo Blackhearts"><div><strong>BLACKHEARTS</strong><small>DEPARTAMENTO DE INVESTIGAÇÃO</small></div></header><nav></nav><footer><span class="start-profile-avatar"></span><div><strong class="start-profile-name"></strong><small>Investigador · Nível 3</small></div><button type="button" class="start-power" aria-label="Bloquear sessão" title="Bloquear sessão">⏻</button></footer>';
 const startNav = startMenu.querySelector('nav');
 menuCategories.forEach(([key,symbol,title,apps]) => {
   const group = document.createElement('div'); group.className = 'start-menu-group';
+  if (key === 'terminal') { group.dataset.adminOnly = 'true'; group.hidden = true; }
   const button = document.createElement('button'); button.type='button'; button.className='start-category'; button.setAttribute('aria-expanded','false');
   button.innerHTML=`<span class="start-category-icon">${symbol==='terminal'?'<svg class="terminal-menu-icon" viewBox="0 0 32 28" aria-hidden="true"><rect x="1" y="1" width="30" height="25" rx="2"/><path d="m7 8 6 5-6 5m9 0h8"/></svg>':symbol}</span><span>${title}</span><b>›</b>`;
   const submenu=document.createElement('div');submenu.className='start-submenu';submenu.hidden=true;
@@ -348,6 +349,7 @@ startButton.addEventListener('click',()=>{
   const opening=startMenu.hidden;
   startMenu.hidden=!opening;startButton.setAttribute('aria-expanded',String(opening));
   startMenu.querySelector('.start-profile-name').textContent=activeProfile || 'Investigador';
+  startMenu.querySelectorAll('[data-admin-only]').forEach(group => { group.hidden = activeProfile.toLowerCase() !== 'sakai'; });
   const photo=startMenu.querySelector('.start-profile-avatar');photo.replaceChildren();
   photo.append(avatarButton.firstElementChild.cloneNode(true));
 });
