@@ -133,7 +133,16 @@
       });
     });
   }
-  new MutationObserver(()=>{addDeleteButtons();addPasswordButtons();alignCaseActions();addClassificationFilter();}).observe(content, {childList:true});
+  function addCasePhotos() {
+    content.querySelectorAll('.case-card').forEach(card => {
+      if(card.querySelector('.case-card-photo'))return;
+      const row=cases.find(item=>item.id===card.querySelector('[data-case]').dataset.case);
+      if(!row?.photo)return;
+      const image=document.createElement('img');image.className='case-card-photo';image.src=row.photo;image.alt='Foto do caso '+row.name;
+      card.querySelector('.case-card-open p').before(image);
+    });
+  }
+  new MutationObserver(()=>{addDeleteButtons();addPasswordButtons();alignCaseActions();addClassificationFilter();addCasePhotos();}).observe(content, {childList:true});
   // The desktop is rendered before login; refresh admin actions once the user is known.
   new MutationObserver(() => render()).observe(document.querySelector('#taskbar-username'), {childList:true,characterData:true,subtree:true});
   const editor=document.createElement('dialog'); editor.className='rename-icon-dialog case-editor'; document.body.append(editor);
@@ -141,6 +150,7 @@
     const record=cases.find(row=>row.id===(id||active));
     const sub=record?.folders.find(row=>row.id===folder);
     const item=type==='folder'?sub:record;
+    let previewUrl;
     editor.innerHTML=`<form><h2>${item?'Editar': 'Novo'} ${type==='folder'?'subpasta':'caso'}</h2><label>Nome<input name="name" required maxlength="80" value="${escape(item?.name||'')}"></label><label>${type==='folder'?'Observações':'Descrição'}<textarea name="description" maxlength="10000">${escape(type==='folder'?item?.notes||'':item?.description||'')}</textarea></label>${type==='case'?`<label>Status<select name="status">${Object.entries(statuses).map(([key,name])=>`<option value="${key}" ${item?.status===key?'selected':''}>${name}</option>`).join('')}</select></label>`:''}<p role="alert"></p><div><button type="button" data-cancel>Cancelar</button><button>Salvar</button></div></form>`;
     if(type==='case') {
       editor.classList.add('case-designation-editor');
@@ -148,6 +158,12 @@
       editor.querySelector('[name="name"]').placeholder='Nome do caso';
       editor.querySelector('textarea').parentElement.firstChild.textContent='BRIEFING';
       editor.querySelector('textarea').placeholder='Descrição confidencial…';
+      const photoLabel=document.createElement('label');photoLabel.className='case-photo-field';photoLabel.textContent='FOTO DO CASO (OPCIONAL)';
+      const photoInput=document.createElement('input');photoInput.type='file';photoInput.name='casePhoto';photoInput.accept='image/png,image/jpeg,image/webp';
+      const preview=document.createElement('img');preview.className='case-photo-preview';preview.hidden=!item?.photo;if(item?.photo)preview.src=item.photo;preview.alt='Prévia da foto do caso';
+      photoInput.onchange=()=>{if(previewUrl)URL.revokeObjectURL(previewUrl);const file=photoInput.files[0];if(file){previewUrl=URL.createObjectURL(file);preview.src=previewUrl;preview.hidden=false;}else{preview.hidden=!item?.photo;if(item?.photo)preview.src=item.photo;}};
+      photoLabel.append(photoInput,preview);editor.querySelector('textarea').parentElement.after(photoLabel);
+      editor.addEventListener('close',()=>{if(previewUrl)URL.revokeObjectURL(previewUrl);},{once:true});
       const statusLabel=editor.querySelector('[name="status"]').parentElement;
       const classificationFields=document.createElement('fieldset');classificationFields.className='case-choice-fields';classificationFields.innerHTML=`<legend>CLASSIFICAÇÃO</legend>${[['legal','⚖ LEGAL'],['illegal','◈ ILEGAL']].map(([value,label])=>`<label><input type="radio" name="classification" value="${value}" ${(item?.classification||'legal')===value?'checked':''}><span>${label}</span></label>`).join('')}`;statusLabel.before(classificationFields);
       const statusFields=document.createElement('fieldset');statusFields.className='case-choice-fields';statusFields.innerHTML=`<legend>STATUS</legend>${[['active','Ativo'],['priority','Prioridade'],['archived','Arquivado'],['closed','Encerrado']].map(([value,label])=>`<label><input type="radio" name="status" value="${value}" ${(item?.status||'active')===value?'checked':''}><span>● ${label}</span></label>`).join('')}`;statusLabel.replaceWith(statusFields);
@@ -157,9 +173,21 @@
     editor.querySelector('form').onsubmit=async event=>{
       event.preventDefault();const fields=new FormData(event.currentTarget),name=String(fields.get('name')).trim();if(!name)return;
       const next=structuredClone(cases);
+      let uploadedPhoto;
+      if(type==='case'){
+        const file=fields.get('casePhoto');
+        if(file?.size){
+          if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>10*1024*1024){editor.querySelector('p').textContent='Escolha uma foto PNG, JPG ou WebP de até 10 MB.';return;}
+          let image;
+          try{image=await createImageBitmap(file);const canvas=document.createElement('canvas');const scale=Math.min(1,400/Math.max(image.width,image.height));canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);uploadedPhoto=canvas.toDataURL('image/jpeg',.8);}
+          catch{editor.querySelector('p').textContent='Não foi possível abrir esta foto. Escolha outra imagem.';return;}
+          finally{image?.close();}
+        }
+      }
       if(type==='case'){const values={name,description:String(fields.get('description')),status:fields.get('status'),classification:fields.get('classification')};const password=fields.get('casePassword');if(password&&isCaseAdmin()){try{values.passwordSalt=crypto.randomUUID();values.passwordHash=await passwordDigest(password,values.passwordSalt);}catch{editor.querySelector('p').textContent='Não foi possível salvar a senha.';return;}}if(item)Object.assign(next.find(row=>row.id===item.id),values);else next.push({...values,id:crypto.randomUUID(),code:'OPS · '+Date.now().toString(16).slice(-6).toUpperCase(),folders:[]});}
       else {const parent=next.find(row=>row.id===active),values={name,notes:String(fields.get('description'))};if(sub)Object.assign(parent.folders.find(row=>row.id===sub.id),values);else parent.folders.push({...values,id:crypto.randomUUID()});}
-      try{persist(next);editor.close();render();}catch{editor.querySelector('p').textContent='Não foi possível salvar neste navegador.';}
+      if(uploadedPhoto){const target=item?next.find(row=>row.id===item.id):next[next.length-1];target.photo=uploadedPhoto;}
+      try{persist(next);editor.close();render();}catch{editor.querySelector('p').textContent='Não foi possível salvar neste navegador. O armazenamento pode estar cheio.';}
     };editor.showModal();
   }
   content.addEventListener('click',event=>{const button=event.target.closest('button');if(!button)return;if(button.hasAttribute('data-back')){if(folder)folder=null;else active=null;}if(button.dataset.case)active=button.dataset.case;if(button.dataset.folder)folder=button.dataset.folder;if(button.dataset.filter)filter=button.dataset.filter;if(button.hasAttribute('data-new-case'))return edit('case');if(button.hasAttribute('data-new-folder'))return edit('folder');if(button.dataset.editId)return edit('case',button.dataset.editId);if(button.dataset.edit)return edit(button.dataset.edit);render();});
