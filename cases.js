@@ -265,5 +265,17 @@
   const tasks=document.createElement('div');tasks.className='window-tasks';document.querySelector('.tray').before(tasks);
   const syncTasks=()=>{tasks.replaceChildren();document.querySelectorAll('.window').forEach(item=>{if(item.classList.contains('hidden'))return;const task=document.createElement('button');task.className='window-task';task.innerHTML=desktopSymbol('folder');const name=item.querySelector('.window-header > span:nth-child(2)').textContent;task.title=name;task.setAttribute('aria-label','Restaurar '+name);task.classList.toggle('is-minimized',item.classList.contains('minimized'));task.onclick=()=>{item.classList.remove('minimized');bringForward(item);};tasks.append(task);});};
   document.querySelectorAll('.window').forEach(item=>new MutationObserver(syncTasks).observe(item,{attributes:true,attributeFilter:['class']}));
+  win.querySelector('.close').addEventListener('click', () => {
+    active = null;
+    folder = null;
+    filter = 'all';
+    query = '';
+    classification = 'all';
+    accessFilter = 'all';
+    priorityFilter = 'all';
+    filtersOpen = false;
+    render();
+    content.scrollTop = 0;
+  });
   render();syncTasks();
 })();
