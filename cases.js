@@ -32,6 +32,13 @@
   try { cases = JSON.parse(localStorage.getItem('bh-cases-v1')); } catch {}
   if (!Array.isArray(cases)) cases = ['LOS ANJOS','DORADONEWS','LSCUSTOMS','STROKEMASTERS','BENNYS','BAHAMAS','ANJOS BEACH','FIREWITCHES'].map((name,index) => ({id:crypto.randomUUID(),name,description:`Investigação sobre ${name}`,status:'active',code:`OPS · ${String(index+1).padStart(6,'0')}`,folders:[]}));
   let active = null, folder = null, filter = 'all', query = '', classification = 'all';
+  let caseOrder='newest', accessFilter='all';
+  const normalizeSearch=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR');
+  function searchableCase(row){
+    const texts=[];
+    function visit(item){if(!item||typeof item!=='object')return;for(const [key,value] of Object.entries(item)){if(['photo','passwordHash','passwordSalt','data'].includes(key))continue;if(typeof value==='string')texts.push(value);else if(Array.isArray(value))value.forEach(visit);else if(value&&typeof value==='object')visit(value);}}
+    visit(row);return normalizeSearch(texts.join(' '));
+  }
   const statuses = {active:'Ativas',priority:'Prioridade',archived:'Arquivadas',closed:'Encerradas'};
   function persist(next) { localStorage.setItem('bh-cases-v1',JSON.stringify(next)); cases=next; }
   function render() {
@@ -41,7 +48,9 @@
       content.innerHTML = `<button class="case-back" data-back>← ${sub?escape(record.name):'Todos os casos'}</button><div class="cases-heading"><div><h2>${escape(sub?.name || record.name)}</h2><p>${escape(sub?'Subpasta de '+record.name:record.description)}</p></div><button data-edit="${sub?'folder':'case'}">Editar</button></div>${sub?`<div class="case-notes">${escape(sub.notes || 'Nenhuma observação cadastrada.')}</div>`:`<button data-new-folder>＋ Nova subpasta</button><div class="cases-grid">${record.folders.map(item=>`<button class="case-folder" data-folder="${item.id}">${desktopSymbol('folder')}<strong>${escape(item.name)}</strong></button>`).join('') || '<p class="cases-empty">Crie subpastas para organizar este caso.</p>'}</div>`}`;
       return;
     }
-    const rows=cases.filter(row=>(filter==='all'||row.status===filter)&&(classification==='all'||(row.classification||'legal')===classification)&&`${row.name} ${row.code} ${row.description}`.toLocaleLowerCase('pt-BR').includes(query.toLocaleLowerCase('pt-BR')));
+    const terms=normalizeSearch(query).trim().split(/\s+/).filter(Boolean);
+    const rows=cases.filter(row=>(filter==='all'||row.status===filter)&&(classification==='all'||(row.classification||'legal')===classification)&&(accessFilter==='all'||(accessFilter==='protected'?!!row.passwordHash:!row.passwordHash))&&terms.every(term=>searchableCase(row).includes(term)));
+    rows.sort((a,b)=>caseOrder==='az'?a.name.localeCompare(b.name,'pt-BR'):caseOrder==='za'?b.name.localeCompare(a.name,'pt-BR'):caseOrder==='oldest'?cases.indexOf(a)-cases.indexOf(b):cases.indexOf(b)-cases.indexOf(a));
     content.innerHTML=`<div class="cases-heading"><div><h2>Casos</h2><p>${cases.length} casos · ${cases.filter(row=>row.status==='active').length} ativos</p></div><button data-new-case>＋ NOVO CASO</button></div><input class="cases-search" placeholder="Buscar por nome, código ou descrição…" aria-label="Buscar casos" value="${escape(query)}"><nav class="cases-tabs">${Object.entries({all:'Todas',...statuses}).map(([key,name])=>`<button data-filter="${key}" class="${filter===key?'selected':''}">${name} <small>${cases.filter(row=>key==='all'||row.status===key).length}</small></button>`).join('')}</nav><div class="cases-grid">${rows.map(row=>`<article class="case-card"><button class="case-card-open" data-case="${row.id}"><small><i class="case-state ${row.status}"></i>${escape(row.code)}</small><h3>${escape(row.name)}</h3><p>${escape(row.description)}</p><span>${escape(statuses[row.status] || 'Ativas')}</span></button><button class="case-edit" data-edit-id="${row.id}" aria-label="Editar ${escape(row.name)}">✎</button></article>`).join('')||'<p class="cases-empty">Nenhum caso encontrado.</p>'}</div>`;
   }
   const deleteDialog = document.createElement('dialog');
@@ -142,7 +151,32 @@
       card.querySelector('.case-card-open h3').before(image);
     });
   }
-  new MutationObserver(()=>{addDeleteButtons();addPasswordButtons();alignCaseActions();addClassificationFilter();addCasePhotos();}).observe(content, {childList:true});
+  function enhanceSearchTools(){
+    const search=content.querySelector('.cases-search');if(!search||content.querySelector('.case-search-tools'))return;
+    search.placeholder='Buscar nomes ou palavras em casos e subpastas…';
+    const tools=document.createElement('div');tools.className='case-search-tools';search.before(tools);tools.append(search);
+    const toggle=document.createElement('button');toggle.textContent='☷ Filtros';toggle.type='button';toggle.setAttribute('aria-expanded','false');tools.append(toggle);
+    const order=document.createElement('select');order.setAttribute('aria-label','Organizar casos');order.innerHTML='<option value="newest">Mais recentes</option><option value="oldest">Mais antigos</option><option value="az">Nome A–Z</option><option value="za">Nome Z–A</option>';order.value=caseOrder;order.onchange=()=>{caseOrder=order.value;render();};tools.append(order);
+    const filters=document.createElement('div');filters.className='case-extra-filters';filters.hidden=true;tools.after(filters);
+    const existing=content.querySelector('.classification-filter');if(existing)filters.append(existing);
+    const access=document.createElement('select');access.setAttribute('aria-label','Filtrar acesso');access.innerHTML='<option value="all">Todos os acessos</option><option value="protected">Com senha</option><option value="free">Sem senha</option>';access.value=accessFilter;access.onchange=()=>{accessFilter=access.value;render();};filters.append(access);
+    const clear=document.createElement('button');clear.type='button';clear.textContent='Limpar filtros';clear.onclick=()=>{query='';filter='all';classification='all';accessFilter='all';render();};filters.append(clear);
+    if(classification!=='all'||accessFilter!=='all'){filters.hidden=false;toggle.setAttribute('aria-expanded','true');}
+    toggle.onclick=()=>{filters.hidden=!filters.hidden;toggle.setAttribute('aria-expanded',String(!filters.hidden));};
+    const quick=document.createElement('button');quick.type='button';quick.className='case-quick-note';quick.textContent='▤ Nota rápida';quick.onclick=openQuickNotes;content.querySelector('[data-new-case]').before(quick);
+    if(query){const hint=document.createElement('p');hint.className='case-search-hint';hint.textContent=content.querySelectorAll('.case-card').length+' caso(s) encontrado(s). Busca inclui nomes e textos das subpastas.';content.querySelector('.cases-grid').before(hint);}
+  }
+  const quickNotesDialog=document.createElement('dialog');quickNotesDialog.className='rename-icon-dialog quick-case-notes';document.body.append(quickNotesDialog);
+  function readCaseNotes(){try{const saved=JSON.parse(localStorage.getItem('bh-case-quick-notes')||'[]');return Array.isArray(saved)?saved:[];}catch{return [];}}
+  function openQuickNotes(){
+    const notes=readCaseNotes();
+    quickNotesDialog.innerHTML=`<form><h2>Nota rápida</h2><label for="quick-case-message">Deixe um recado</label><textarea id="quick-case-message" required maxlength="2000" placeholder="Escreva seu recado…"></textarea><p class="quick-note-error" role="alert"></p><div><button type="button" data-close-notes>Fechar</button><button type="submit">Publicar</button></div></form><div class="quick-case-note-list">${notes.map(note=>`<article><strong>${escape(note.author)}</strong><small>${escape(new Date(note.createdAt).toLocaleString('pt-BR'))}</small><p>${escape(note.text)}</p>${isCaseAdmin()?`<button type="button" data-remove-note="${escape(note.id)}">Excluir recado</button>`:''}</article>`).join('')||'<p>Nenhum recado publicado.</p>'}</div>`;
+    quickNotesDialog.querySelector('[data-close-notes]').onclick=()=>quickNotesDialog.close();
+    quickNotesDialog.querySelector('form').onsubmit=event=>{event.preventDefault();const text=quickNotesDialog.querySelector('textarea').value.trim();if(!text)return;try{localStorage.setItem('bh-case-quick-notes',JSON.stringify([{id:crypto.randomUUID(),author:activeProfile||'Investigador',text,createdAt:new Date().toISOString()},...readCaseNotes()]));openQuickNotes();}catch{quickNotesDialog.querySelector('.quick-note-error').textContent='Não foi possível salvar o recado.';}};
+    quickNotesDialog.querySelectorAll('[data-remove-note]').forEach(button=>button.onclick=()=>{if(!isCaseAdmin()||!confirm('Excluir este recado?'))return;try{localStorage.setItem('bh-case-quick-notes',JSON.stringify(readCaseNotes().filter(note=>note.id!==button.dataset.removeNote)));openQuickNotes();}catch{quickNotesDialog.querySelector('.quick-note-error').textContent='Não foi possível excluir o recado.';}});
+    if(!quickNotesDialog.open)quickNotesDialog.showModal();
+  }
+  new MutationObserver(()=>{addDeleteButtons();addPasswordButtons();alignCaseActions();addClassificationFilter();addCasePhotos();enhanceSearchTools();}).observe(content, {childList:true});
   // The desktop is rendered before login; refresh admin actions once the user is known.
   new MutationObserver(() => render()).observe(document.querySelector('#taskbar-username'), {childList:true,characterData:true,subtree:true});
   const editor=document.createElement('dialog'); editor.className='rename-icon-dialog case-editor'; document.body.append(editor);
