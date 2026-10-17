@@ -1,4 +1,27 @@
 (() => {
+  document.querySelectorAll('.window').forEach(windowEl => {
+    const controls = windowEl.querySelector('.window-controls');
+    const maximize = document.createElement('button');
+    maximize.type = 'button';
+    maximize.className = 'maximize';
+    maximize.title = 'Maximizar';
+    maximize.setAttribute('aria-label', 'Maximizar janela');
+    maximize.setAttribute('aria-pressed', 'false');
+    const updateButton = () => {
+      const expanded = windowEl.classList.contains('maximized');
+      maximize.innerHTML = expanded ? '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3h8v8M3 5h8v8H3Z"/></svg>' : '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10"/></svg>';
+      maximize.title = expanded ? 'Restaurar tamanho' : 'Maximizar';
+      maximize.setAttribute('aria-label', maximize.title);
+      maximize.setAttribute('aria-pressed', String(expanded));
+    };
+    const toggleMaximize = () => { windowEl.classList.toggle('maximized'); bringForward(windowEl); updateButton(); };
+    maximize.addEventListener('click', toggleMaximize);
+    controls.insertBefore(maximize, controls.querySelector('.close'));
+    updateButton();
+    const header = windowEl.querySelector('.window-header');
+    header.addEventListener('dblclick', event => { if (!event.target.closest('button')) toggleMaximize(); });
+    header.addEventListener('pointerdown', event => { if (windowEl.classList.contains('maximized') && !event.target.closest('button')) event.stopImmediatePropagation(); }, true);
+  });
   const win = document.querySelector('[data-window="case"]');
   const content = win.querySelector('.window-content');
   win.classList.add('cases-browser');
