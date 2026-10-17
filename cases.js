@@ -116,7 +116,17 @@
     const row=cases.find(item=>item.id===button.dataset.case);
     if(row?.passwordHash){event.stopImmediatePropagation();requestCasePassword(row);}
   },true);
-  new MutationObserver(()=>{addDeleteButtons();addPasswordButtons();}).observe(content, {childList:true});
+  function alignCaseActions() {
+    content.querySelectorAll('.case-card').forEach(card => {
+      let actions = card.querySelector('.case-actions');
+      if (!actions) { actions = document.createElement('div'); actions.className = 'case-actions'; actions.setAttribute('role','group'); actions.setAttribute('aria-label','Ações do caso'); card.prepend(actions); }
+      ['case-password','case-edit','case-delete'].forEach(name => {
+        const button = card.querySelector('.' + name);
+        if (button && button.parentElement !== actions) actions.append(button);
+      });
+    });
+  }
+  new MutationObserver(()=>{addDeleteButtons();addPasswordButtons();alignCaseActions();}).observe(content, {childList:true});
   // The desktop is rendered before login; refresh admin actions once the user is known.
   new MutationObserver(() => render()).observe(document.querySelector('#taskbar-username'), {childList:true,characterData:true,subtree:true});
   const editor=document.createElement('dialog'); editor.className='rename-icon-dialog case-editor'; document.body.append(editor);
