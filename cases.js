@@ -139,7 +139,7 @@
       const row=cases.find(item=>item.id===card.querySelector('[data-case]').dataset.case);
       if(!row?.photo)return;
       const image=document.createElement('img');image.className='case-card-photo';image.src=row.photo;image.alt='Foto do caso '+row.name;
-      card.querySelector('.case-card-open p').before(image);
+      card.querySelector('.case-card-open h3').before(image);
     });
   }
   new MutationObserver(()=>{addDeleteButtons();addPasswordButtons();alignCaseActions();addClassificationFilter();addCasePhotos();}).observe(content, {childList:true});
