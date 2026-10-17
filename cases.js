@@ -265,7 +265,7 @@
   const tasks=document.createElement('div');tasks.className='window-tasks';document.querySelector('.tray').before(tasks);
   const syncTasks=()=>{tasks.replaceChildren();document.querySelectorAll('.window').forEach(item=>{if(item.classList.contains('hidden'))return;const task=document.createElement('button');task.className='window-task';task.innerHTML=desktopSymbol('folder');const name=item.querySelector('.window-header > span:nth-child(2)').textContent;task.title=name;task.setAttribute('aria-label','Restaurar '+name);task.classList.toggle('is-minimized',item.classList.contains('minimized'));task.onclick=()=>{item.classList.remove('minimized');bringForward(item);};tasks.append(task);});};
   document.querySelectorAll('.window').forEach(item=>new MutationObserver(syncTasks).observe(item,{attributes:true,attributeFilter:['class']}));
-  win.querySelector('.close').addEventListener('click', () => {
+  function resetCasesMenu() {
     active = null;
     folder = null;
     filter = 'all';
@@ -274,8 +274,13 @@
     accessFilter = 'all';
     priorityFilter = 'all';
     filtersOpen = false;
+    caseOrder = 'newest';
     render();
     content.scrollTop = 0;
+  }
+  win.querySelector('.close').addEventListener('click', resetCasesMenu);
+  document.querySelectorAll('.desktop-icon[data-open="case"]').forEach(icon => {
+    icon.addEventListener('click', resetCasesMenu, {capture:true});
   });
   render();syncTasks();
 })();
