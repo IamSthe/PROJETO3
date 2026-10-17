@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="metal" x2=".3" y2="1"><stop stop-color="#e0e5e8"/><stop offset=".24" stop-color="#a1a9ae"/><stop offset=".55" stop-color="#687177"/><stop offset="1" stop-color="#30373b"/></linearGradient>
+    <linearGradient id="front" x2=".2" y2="1"><stop stop-color="#b5bdc2"/><stop offset=".1" stop-color="#818b92"/><stop offset="1" stop-color="#31383d"/></linearGradient>
+  </defs>
+  <symbol id="folder" viewBox="0 0 64 64">
+    <path d="M7 14Q7 10 11 10h15l6 6h20q5 0 5 5v29H7Z" fill="url(#metal)" stroke="#899298"/>
+    <path d="M8 20h47v30H8Z" fill="#dae0e3"/>
+    <path d="M5 25q0-4 5-4h45q5 0 5 4l-2 28q0 3-4 3H10q-4 0-4-4Z" fill="url(#front)" stroke="#8c959b"/>
+    <path d="M9 23h46" stroke="#ecf0f2" stroke-opacity=".6"/>
+  </symbol>
+  <symbol id="trash" viewBox="0 0 64 64">
+    <path d="m19 20 3 36h22l3-36" fill="url(#front)" stroke="#a5afb5" stroke-width="2.5"/>
+    <path d="M15 19h36M26 17l1-6h11l2 6" fill="none" stroke="#c4ccd0" stroke-width="3" stroke-linecap="round"/>
+    <path d="m28 27 1 22m9-22-1 22" stroke="#1c2328" stroke-width="3"/>
+    <path d="m23 22 2 30" stroke="#d6dce0" stroke-opacity=".5"/>
+  </symbol>
+  <symbol id="database" viewBox="0 0 64 64"><rect x="15" y="7" width="34" height="50" rx="3" fill="url(#metal)" stroke="#a3adb3"/><path d="M23 17h18M23 25h18M23 33h18M23 41h18M23 49h10" stroke="#30393f" stroke-width="3"/><circle cx="43" cy="49" r="2" fill="#dce2e5"/></symbol>
+  <symbol id="camera" viewBox="0 0 64 64"><circle cx="21" cy="17" r="10" fill="url(#metal)"/><circle cx="42" cy="17" r="10" fill="url(#metal)"/><rect x="9" y="29" width="37" height="23" rx="4" fill="url(#front)" stroke="#9da7ad"/><path d="m46 35 11-6v23l-11-6Z" fill="url(#metal)"/><path d="M16 36h20M16 42h13" stroke="#bac2c7" stroke-width="2"/></symbol>
+  <symbol id="audio" viewBox="0 0 64 64"><path d="M12 36v-8a20 20 0 0 1 40 0v8" fill="none" stroke="#aab3b9" stroke-width="7"/><path d="M12 35V28a20 20 0 0 1 40 0v7" fill="none" stroke="#e4e8eb" stroke-width="2"/><rect x="8" y="32" width="11" height="23" rx="4" fill="url(#metal)"/><rect x="45" y="32" width="11" height="23" rx="4" fill="url(#metal)"/></symbol>
+  <symbol id="document" viewBox="0 0 64 64"><path d="M16 7h23l10 11v39H16Z" fill="url(#metal)" stroke="#9da7ad"/><path d="M39 7v12h10M23 28h19M23 35h19M23 42h19M23 49h12" fill="none" stroke="#414a50" stroke-width="2"/></symbol>
+</svg>

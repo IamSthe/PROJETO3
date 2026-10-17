@@ -1,5 +1,17 @@
 const boot = document.querySelector('#boot');
 const desktop = document.querySelector('#desktop');
+function desktopSymbol(name) {
+  return `<svg class="metallic-icon" viewBox="0 0 64 64" aria-hidden="true"><use href="assents/desktop-icons.svg#${name}"></use></svg>`;
+}
+const desktopSymbols = {case:'folder',evidence:'folder',database:'database',cameras:'camera',audio:'audio',trash:'trash'};
+document.querySelectorAll('.desktop-icon').forEach(button => {
+  button.firstElementChild.innerHTML = desktopSymbol(desktopSymbols[button.dataset.open]);
+});
+document.querySelectorAll('.window-app-icon').forEach(element => {
+  element.innerHTML = desktopSymbol(element.closest('[data-window]').dataset.window === 'case' ? 'folder' : 'document');
+});
+document.querySelectorAll('.menu-row > span').forEach(element => element.innerHTML = desktopSymbol('document'));
+document.querySelector('.taskbar-app').innerHTML = desktopSymbol('folder');
 const volumeIcon = document.querySelector('.volume-icon');
 volumeIcon.setAttribute('role', 'button');
 volumeIcon.tabIndex = 0;
