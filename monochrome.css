@@ -1,0 +1,39 @@
+/* Neutral interface palette shared by the desktop and investigation workspace. */
+:root{color-scheme:dark;accent-color:#d0d0d0}
+body{background:#090909;color:#eee}
+.boot{background:radial-gradient(ellipse at 50% 42%,#202020,#111 35%,#090909 72%)}
+.boot::before{background:linear-gradient(115deg,transparent 35%,#ffffff08 50%,transparent 65%)}
+.boot-footer,.boot-status{color:#aaa}.footer-divider{background:#555}
+.windows-logo i{background:linear-gradient(145deg,#eee,#888)}.windows-logo{filter:drop-shadow(0 0 18px #ffffff22)}
+.spinner{border-top-color:#eee;border-right-color:#ddd}.skip-boot{background:#222;border-color:#555;color:#ddd}.skip-boot:hover{background:#333}.skip-boot span{color:#ddd}
+.desktop::before{background-image:linear-gradient(#ffffff08 1px,transparent 1px),linear-gradient(90deg,#ffffff08 1px,transparent 1px)}
+.star,.star.is-blue{background:#ddd;box-shadow:0 0 5px #ffffff55}
+.taskbar-avatar,.avatar-preview-circle{background:#222;border-color:#777;color:#ddd}
+.taskbar-avatar:hover{outline-color:#bbb}.taskbar-avatar:focus-visible{outline-color:#fff}
+.avatar-menu,.avatar-preview-dialog{background:#181818;border-color:#444;color:#eee}.avatar-menu button:hover,.avatar-menu button:focus-visible{background:#333}
+.toast{background:#202020ef;border-color:#555;color:#eee}
+.tray,.desktop-identity{color:#bbb}.desktop-identity time strong{color:#ddd}.desktop-identity time small,.department-label span{color:#888}
+.start-menu{background:linear-gradient(120deg,#171717f7,#090909fb);color:#ccc}.start-category,.start-menu footer strong{color:#ccc}.start-category-icon,.start-power{color:#aaa}.start-profile-avatar{background:#333}.start-profile-avatar svg{stroke:#ccc}
+.cases-browser.investigation-workspace-window .window-content,.iw-workspace{background:#0a0a0a;color:#ccc}
+.iw-header{background:linear-gradient(#191919,#0c0c0c);border-color:#333}
+.iw-brand strong{color:#eee}.iw-brand small{color:#888}
+.iw-header button:hover,.iw-header button.selected{background:#272727;border-color:#666;color:#fff}
+.iw-sidebar section,.iw-details,.iw-center{background:#101010;border-color:#303030}
+.iw-workspace h3{color:#ccc}.iw-sidebar button,.iw-details>button{background:#141414;border-color:#333}
+.iw-sidebar button:hover,.iw-details>button:hover{background:#242424;border-color:#666}
+.iw-sidebar small,.iw-details>button small{color:#888}
+.iw-case-identity{background:linear-gradient(135deg,#202020,#141414);border-color:#555}
+.iw-case-identity strong{color:#eee}.iw-case-identity p{color:#aaa}
+.iw-board-heading{border-color:#333}.iw-board-heading input{background:#101010;border-color:#444;color:#ddd}
+.iw-board-heading button,.iw-summary button,.iw-empty button,.iw-folder-content button,.iw-media h3 button{background:#202020;border-color:#555;color:#ddd}
+.iw-board{background-color:#0a0a0a;background-image:radial-gradient(#ffffff22 .7px,transparent .7px)}
+.iw-node{background:linear-gradient(135deg,#202020,#101010);--node-color:#aaa}
+.iw-node.selected{outline-color:#eee;box-shadow:0 0 12px #ffffff25}
+.iw-node-type{background:color-mix(in srgb,var(--node-color) 12%,#111)}
+.iw-node-symbol{color:#bbb}.iw-node strong{color:#eee}.iw-node small{color:#999}
+.iw-empty{background:#171717ee;border-color:#555}.iw-empty p{color:#aaa}
+.iw-detail-empty{color:#999}.iw-detail-card{border-color:#444}.iw-detail-card>img{border-color:#555}.iw-detail-card>small{color:#aaa}
+.iw-detail-card dt{color:#999;border-color:#333}.iw-detail-card button{background:#202020;border-color:#555}
+.iw-details p{color:#999}.iw-media{border-color:#333}.iw-media>div>button{background:#181818;border-color:#444}.iw-media p{color:#999}
+.iw-summary>div{border-color:#333}.iw-editor textarea,.iw-editor select{background:#101010;border-color:#555;color:#ddd}
+input:focus-visible,textarea:focus-visible,select:focus-visible{outline-color:#ddd}
