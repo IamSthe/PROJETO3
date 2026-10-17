@@ -12,7 +12,7 @@ let audioContext;
 const volumePanel = document.createElement('div');
 volumePanel.className = 'volume-panel';
 volumePanel.hidden = true;
-volumePanel.innerHTML = '<span class="volume-panel-title">Som do site</span><output id="volume-value"></output><input id="site-volume" type="range" min="0" max="100" aria-label="Volume do site"><button type="button" id="volume-mute">Silenciar</button>';
+volumePanel.innerHTML = '<span class="volume-panel-title">VOLUME</span><output id="volume-value"></output><input id="site-volume" type="range" min="0" max="100" aria-label="Volume do site"><button type="button" id="volume-mute">Silenciar</button>';
 volumeIcon.parentElement.append(volumePanel);
 const volumeSlider = volumePanel.querySelector('input');
 function updateSiteVolume() {
