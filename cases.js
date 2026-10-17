@@ -151,6 +151,7 @@
     const sub=record?.folders.find(row=>row.id===folder);
     const item=type==='folder'?sub:record;
     let previewUrl;
+    let removePhoto = false;
     editor.innerHTML=`<form><h2>${item?'Editar': 'Novo'} ${type==='folder'?'subpasta':'caso'}</h2><label>Nome<input name="name" required maxlength="80" value="${escape(item?.name||'')}"></label><label>${type==='folder'?'Observações':'Descrição'}<textarea name="description" maxlength="10000">${escape(type==='folder'?item?.notes||'':item?.description||'')}</textarea></label>${type==='case'?`<label>Status<select name="status">${Object.entries(statuses).map(([key,name])=>`<option value="${key}" ${item?.status===key?'selected':''}>${name}</option>`).join('')}</select></label>`:''}<p role="alert"></p><div><button type="button" data-cancel>Cancelar</button><button>Salvar</button></div></form>`;
     if(type==='case') {
       editor.classList.add('case-designation-editor');
@@ -161,8 +162,10 @@
       const photoLabel=document.createElement('label');photoLabel.className='case-photo-field';photoLabel.textContent='FOTO DO CASO (OPCIONAL)';
       const photoInput=document.createElement('input');photoInput.type='file';photoInput.name='casePhoto';photoInput.accept='image/png,image/jpeg,image/webp';
       const preview=document.createElement('img');preview.className='case-photo-preview';preview.hidden=!item?.photo;if(item?.photo)preview.src=item.photo;preview.alt='Prévia da foto do caso';
-      photoInput.onchange=()=>{if(previewUrl)URL.revokeObjectURL(previewUrl);const file=photoInput.files[0];if(file){previewUrl=URL.createObjectURL(file);preview.src=previewUrl;preview.hidden=false;}else{preview.hidden=!item?.photo;if(item?.photo)preview.src=item.photo;}};
-      photoLabel.append(photoInput,preview);editor.querySelector('textarea').parentElement.after(photoLabel);
+      const removePhotoButton=document.createElement('button');removePhotoButton.type='button';removePhotoButton.className='remove-case-photo';removePhotoButton.textContent='Remover foto';removePhotoButton.hidden=!item?.photo;
+      removePhotoButton.onclick=()=>{removePhoto=true;photoInput.value='';preview.hidden=true;preview.removeAttribute('src');removePhotoButton.hidden=true;if(previewUrl){URL.revokeObjectURL(previewUrl);previewUrl=null;}};
+      photoInput.onchange=()=>{if(previewUrl)URL.revokeObjectURL(previewUrl);const file=photoInput.files[0];if(file){removePhoto=false;previewUrl=URL.createObjectURL(file);preview.src=previewUrl;preview.hidden=false;removePhotoButton.hidden=false;}else{preview.hidden=removePhoto||!item?.photo;removePhotoButton.hidden=preview.hidden;if(!preview.hidden)preview.src=item.photo;}};
+      photoLabel.append(photoInput,preview,removePhotoButton);editor.querySelector('textarea').parentElement.after(photoLabel);
       editor.addEventListener('close',()=>{if(previewUrl)URL.revokeObjectURL(previewUrl);},{once:true});
       const statusLabel=editor.querySelector('[name="status"]').parentElement;
       const classificationFields=document.createElement('fieldset');classificationFields.className='case-choice-fields';classificationFields.innerHTML=`<legend>CLASSIFICAÇÃO</legend>${[['legal','⚖ LEGAL'],['illegal','◈ ILEGAL']].map(([value,label])=>`<label><input type="radio" name="classification" value="${value}" ${(item?.classification||'legal')===value?'checked':''}><span>${label}</span></label>`).join('')}`;statusLabel.before(classificationFields);
@@ -187,6 +190,7 @@
       if(type==='case'){const values={name,description:String(fields.get('description')),status:fields.get('status'),classification:fields.get('classification')};const password=fields.get('casePassword');if(password&&isCaseAdmin()){try{values.passwordSalt=crypto.randomUUID();values.passwordHash=await passwordDigest(password,values.passwordSalt);}catch{editor.querySelector('p').textContent='Não foi possível salvar a senha.';return;}}if(item)Object.assign(next.find(row=>row.id===item.id),values);else next.push({...values,id:crypto.randomUUID(),code:'OPS · '+Date.now().toString(16).slice(-6).toUpperCase(),folders:[]});}
       else {const parent=next.find(row=>row.id===active),values={name,notes:String(fields.get('description'))};if(sub)Object.assign(parent.folders.find(row=>row.id===sub.id),values);else parent.folders.push({...values,id:crypto.randomUUID()});}
       if(uploadedPhoto){const target=item?next.find(row=>row.id===item.id):next[next.length-1];target.photo=uploadedPhoto;}
+      else if(type==='case'&&removePhoto&&item){delete next.find(row=>row.id===item.id).photo;}
       try{persist(next);editor.close();render();}catch{editor.querySelector('p').textContent='Não foi possível salvar neste navegador. O armazenamento pode estar cheio.';}
     };editor.showModal();
   }
