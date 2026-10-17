@@ -7,7 +7,19 @@
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
   sound.closest('label').remove();
   panel.querySelector('.terminal-toolbar').style.justifyContent = 'flex-end';
-  let frame=0,startTime=0,completed=false,nodes=[],generation=0,context,lastSound=0;
+  let frame=0,startTime=0,completed=false,nodes=[],generation=0,context,lastSound=0,autoCloseTimer;
+  function closeTerminal() {
+    clearTimeout(autoCloseTimer);
+    generation++;
+    cancelAnimationFrame(frame);
+    panel.hidden = true;
+    panel.classList.remove('terminal-minimizing');
+    task.hidden = true;
+  }
+  function scheduleAutoClose() {
+    clearTimeout(autoCloseTimer);
+    autoCloseTimer = setTimeout(closeTerminal, 60000);
+  }
   const lines=[
     [0,0,'BLACKHEARTS INVESTIGATIVE SYSTEM','heading'],[100,0,'Version 4.2.6 | Secure Environment',''],
     [250,500,'> boot --profile confidential --integrity-check',''],[850,0,'[BOOT] Inicializando núcleo investigativo…',''],
@@ -38,6 +50,10 @@
   personalizedPrompt.observe(output, {childList:true});
   panel.querySelector('[data-close]').onclick=()=>{generation++;cancelAnimationFrame(frame);finish();panel.hidden=true;task.hidden=true;};
   document.addEventListener('blackhearts-login',start);
+  document.addEventListener('blackhearts-login',scheduleAutoClose);
+  document.addEventListener('blackhearts-terminal-open',()=>{if(activeProfile.toLowerCase()==='sakai')scheduleAutoClose();});
+  document.addEventListener('blackhearts-lock',closeTerminal);
+  panel.querySelector('[data-close]').addEventListener('click',()=>clearTimeout(autoCloseTimer));
   document.addEventListener('blackhearts-terminal-open',()=>{if(activeProfile.toLowerCase()==='sakai')restore();});
   document.addEventListener('blackhearts-lock',()=>{generation++;cancelAnimationFrame(frame);panel.hidden=true;panel.classList.remove('terminal-minimizing');task.hidden=true;});
 })();
