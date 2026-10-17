@@ -107,7 +107,7 @@
       const row=cases.find(item=>item.id===card.querySelector('[data-case]').dataset.case);
       if(row.passwordHash){const badge=document.createElement('span');badge.className='case-locked-label';badge.textContent='ACESSO RESTRITO';card.append(badge);}
       if(!isCaseAdmin())return;
-      const button=document.createElement('button');button.type='button';button.className='case-password';button.textContent='⚿';button.title=row.passwordHash?'Alterar senha':'Definir senha';button.setAttribute('aria-label',button.title+' de '+row.name);
+      const button=document.createElement('button');button.type='button';button.className='case-password';button.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15" r="1"/><path d="M12 16v2"/></svg>';button.title=row.passwordHash?'Alterar senha':'Definir senha';button.setAttribute('aria-label',button.title+' de '+row.name);
       button.onclick=event=>{event.stopPropagation();requestCasePassword(row,true);};card.append(button);
     });
   }
