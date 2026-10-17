@@ -29,6 +29,51 @@ const loginError = document.querySelector('#login-error');
 const startupStatus = document.querySelector('#startup-status');
 const startupLoading = document.querySelector('#startup-loading');
 const savedLogin = localStorage.getItem('windows-demo-login');
+let activeProfile = '';
+const oldAvatar = document.querySelector('.taskbar-avatar');
+const avatarButton = document.createElement('button');
+avatarButton.type = 'button';
+avatarButton.className = 'taskbar-avatar';
+avatarButton.setAttribute('aria-label', 'Escolher foto do perfil');
+avatarButton.title = 'Clique para escolher sua foto';
+const defaultAvatar = oldAvatar.innerHTML;
+avatarButton.innerHTML = defaultAvatar;
+oldAvatar.replaceWith(avatarButton);
+const avatarInput = document.createElement('input');
+avatarInput.type = 'file';
+avatarInput.accept = 'image/png,image/jpeg,image/webp';
+avatarInput.hidden = true;
+document.body.append(avatarInput);
+function renderProfilePhoto(photo) {
+  avatarButton.replaceChildren();
+  if (photo) {
+    const image = document.createElement('img');
+    image.src = photo;
+    image.alt = `Foto de ${activeProfile}`;
+    avatarButton.append(image);
+  } else avatarButton.innerHTML = defaultAvatar;
+}
+avatarButton.addEventListener('click', () => avatarInput.click());
+avatarInput.addEventListener('change', async () => {
+  const file = avatarInput.files[0];
+  avatarInput.value = '';
+  if (!file || !activeProfile) return;
+  if (!['image/png','image/jpeg','image/webp'].includes(file.type)) { showToast('Escolha uma imagem PNG, JPG ou WebP.'); return; }
+  if (file.size > 10 * 1024 * 1024) { showToast('Escolha uma imagem de até 10 MB.'); return; }
+  let image;
+  try {
+    image = await createImageBitmap(file);
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 128;
+    const side = Math.min(image.width, image.height);
+    canvas.getContext('2d').drawImage(image, (image.width-side)/2, (image.height-side)/2, side, side, 0, 0, 128, 128);
+    const photo = canvas.toDataURL('image/jpeg', .85);
+    localStorage.setItem(`bh-profile-photo:${activeProfile.toLocaleLowerCase('pt-BR')}`, photo);
+    renderProfilePhoto(photo);
+    showToast('Foto do perfil atualizada.');
+  } catch { showToast('Não foi possível salvar a foto. Tente outra imagem.'); }
+  finally { image?.close(); }
+});
 
 if (savedLogin) {
   try {
@@ -54,6 +99,8 @@ loginForm.addEventListener('submit', event => {
 
   loginError.textContent = '';
   document.querySelector('#taskbar-username').textContent = username;
+  activeProfile = username;
+  renderProfilePhoto(localStorage.getItem(`bh-profile-photo:${username.toLocaleLowerCase('pt-BR')}`));
   if (rememberCheckbox.checked) {
     localStorage.setItem('windows-demo-login', JSON.stringify({username, password}));
   } else {
