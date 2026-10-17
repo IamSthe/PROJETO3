@@ -29,7 +29,9 @@
     [3550,0,'[WARNING] Ambiente confidencial. Auditoria de sessão habilitada.','warning'],
     [3900,500,'> load modules: cases / evidence / secure-storage',''],[4550,0,'[OK] Módulos investigativos disponíveis.','ok'],
     [4800,450,'[SYS] Sincronizando índice operacional…',''],[5400,0,'[OK] Banco de dados sincronizado.','ok'],
-    [5700,450,'> finalize_authorization --clearance verified',''],[6400,0,'[OK] Ambiente operacional pronto.','ok']
+    [5700,450,'> finalize_authorization --clearance verified',''],
+    [6200,0,'[SYS] BLACKHEARTS OS · Developed by Sakai','developer-credit'],
+    [6400,0,'[OK] Ambiente operacional pronto.','ok']
   ];
   // Activate audio during the login gesture, before the loading screen finishes.
   document.querySelector('#login-form').addEventListener('submit', async () => {
