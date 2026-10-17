@@ -5,6 +5,8 @@
   const task=document.createElement('button');task.className='window-task terminal-task';task.hidden=true;task.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="17" rx="2"/><path d="m6 8 4 4-4 4m7 0h5"/></svg>';task.title='Blackhearts Secure Terminal';task.setAttribute('aria-label','Restaurar terminal');document.querySelector('.window-tasks').after(task);
   const output=panel.querySelector('.terminal-output'),progress=panel.querySelector('.terminal-progress'),status=panel.querySelector('.terminal-status'),skip=panel.querySelector('[data-skip]'),sound=panel.querySelector('input');
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+  sound.closest('label').remove();
+  panel.querySelector('.terminal-toolbar').style.justifyContent = 'flex-end';
   let frame=0,startTime=0,completed=false,nodes=[],generation=0,context,lastSound=0;
   const lines=[
     [0,0,'BLACKHEARTS INVESTIGATIVE SYSTEM','heading'],[100,0,'Version 4.2.6 | Secure Environment',''],
@@ -17,14 +19,23 @@
     [4800,450,'[SYS] Sincronizando índice operacional…',''],[5400,0,'[OK] Banco de dados sincronizado.','ok'],
     [5700,450,'> finalize_authorization --clearance verified',''],[6400,0,'[OK] Ambiente operacional pronto.','ok']
   ];
-  sound.onchange=async()=>{if(sound.checked){try{context ||= new(window.AudioContext||window.webkitAudioContext)();await context.resume();}catch{sound.checked=false;}}};
-  function tick(now){if(!sound.checked||!siteVolume||!context||context.state!=='running'||now-lastSound<85)return;lastSound=now;const osc=context.createOscillator(),gain=context.createGain();osc.type='triangle';osc.frequency.value=700+Math.random()*350;gain.gain.setValueAtTime(siteVolume/100*.018,context.currentTime);gain.gain.exponentialRampToValueAtTime(.0001,context.currentTime+.025);osc.connect(gain);gain.connect(context.destination);osc.start();osc.stop(context.currentTime+.03);}
+  // Activate audio during the login gesture, before the loading screen finishes.
+  document.querySelector('#login-form').addEventListener('submit', async () => {
+    if (usernameInput.value.trim() !== 'sakai' || passwordInput.value !== '123') return;
+    try { context ||= new (window.AudioContext || window.webkitAudioContext)(); await context.resume(); } catch {}
+  });
+  function tick(now){if(!siteVolume||!context||context.state!=='running'||now-lastSound<85)return;lastSound=now;const osc=context.createOscillator(),gain=context.createGain();osc.type='triangle';osc.frequency.value=700+Math.random()*350;gain.gain.setValueAtTime(siteVolume/100*.018,context.currentTime);gain.gain.exponentialRampToValueAtTime(.0001,context.currentTime+.025);osc.connect(gain);gain.connect(context.destination);osc.start();osc.stop(context.currentTime+.03);}
   function finish(){if(completed)return;completed=true;nodes.forEach((node,i)=>node.textContent=lines[i][2]);const message=document.createElement('div');message.className='terminal-confirmation';message.innerHTML='<strong>IDENTIDADE CONFIRMADA</strong><strong>ACESSO AUTORIZADO — BLACKHEARTS</strong><p>Bem-vindo, Investigador. Seu ambiente operacional está pronto.</p><span>investigador@blackhearts:~$ <b class="terminal-cursor">▌</b></span>';output.append(message);output.scrollTop=output.scrollHeight;progress.style.setProperty('--progress','100%');progress.setAttribute('aria-valuenow','100');status.textContent='Acesso autorizado. Ambiente pronto.';skip.hidden=true;}
   function minimize(){cancelAnimationFrame(frame);finish();task.hidden=false;task.classList.add('is-minimized');panel.classList.add('terminal-minimizing');const current=++generation;setTimeout(()=>{if(current===generation){panel.hidden=true;panel.classList.remove('terminal-minimizing');}},320);}
   function restore(){generation++;panel.classList.remove('terminal-minimizing');panel.hidden=false;task.hidden=false;task.classList.remove('is-minimized');panel.style.zIndex=++topZ+100;output.scrollTop=output.scrollHeight;}
   function animate(now){const elapsed=now-startTime;if(!completed){let changed=false;lines.forEach(([at,duration,text],i)=>{if(elapsed<at)return;const count=duration&&!reduced.matches?Math.min(text.length,Math.floor(Math.pow(Math.min(1,(elapsed-at)/duration),.85)*text.length)):text.length;const next=text.slice(0,count);if(nodes[i].textContent!==next){nodes[i].textContent=next;changed=true;}});if(changed){output.scrollTop=output.scrollHeight;tick(now);}const percent=Math.min(100,Math.round(elapsed/6800*100));progress.style.setProperty('--progress',percent+'%');progress.setAttribute('aria-valuenow',String(percent));if(elapsed>=6800)finish();}if(elapsed>=8800){minimize();return;}frame=requestAnimationFrame(animate);}
   function start(){cancelAnimationFrame(frame);completed=false;output.replaceChildren();lines[5][2]='[SYS] ID de sessão: BH-'+crypto.randomUUID().slice(0,8).toUpperCase();nodes=lines.map(([, , ,name])=>{const node=document.createElement('div');node.className='terminal-line '+name;output.append(node);return node;});skip.hidden=false;status.textContent='Inicializando ambiente…';restore();startTime=performance.now();frame=requestAnimationFrame(animate);}
   skip.onclick=minimize;panel.querySelector('[data-min]').onclick=minimize;task.onclick=restore;
+  const personalizedPrompt = new MutationObserver(() => {
+    const prompt = output.querySelector('.terminal-confirmation > span');
+    if (prompt) prompt.firstChild.textContent = `${activeProfile || 'investigador'}@blackhearts:~$ `;
+  });
+  personalizedPrompt.observe(output, {childList:true});
   panel.querySelector('[data-close]').onclick=()=>{generation++;cancelAnimationFrame(frame);finish();panel.hidden=true;task.hidden=true;};
   document.addEventListener('blackhearts-login',start);
   document.addEventListener('blackhearts-terminal-open',()=>{if(activeProfile.toLowerCase()==='sakai')restore();});
