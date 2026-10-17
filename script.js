@@ -1,5 +1,55 @@
 const boot = document.querySelector('#boot');
 const desktop = document.querySelector('#desktop');
+const volumeIcon = document.querySelector('.volume-icon');
+volumeIcon.setAttribute('role', 'button');
+volumeIcon.tabIndex = 0;
+volumeIcon.setAttribute('aria-expanded', 'false');
+let siteVolume = Number(localStorage.getItem('bh-site-volume') ?? 50);
+if (!Number.isFinite(siteVolume)) siteVolume = 50;
+siteVolume = Math.max(0, Math.min(100, siteVolume));
+let lastVolume = siteVolume || 50;
+let audioContext;
+const volumePanel = document.createElement('div');
+volumePanel.className = 'volume-panel';
+volumePanel.hidden = true;
+volumePanel.innerHTML = '<span class="volume-panel-title">Som do site</span><output id="volume-value"></output><input id="site-volume" type="range" min="0" max="100" aria-label="Volume do site"><button type="button" id="volume-mute">Silenciar</button>';
+volumeIcon.parentElement.append(volumePanel);
+const volumeSlider = volumePanel.querySelector('input');
+function updateSiteVolume() {
+  volumeSlider.value = siteVolume;
+  volumePanel.querySelector('output').textContent = `${siteVolume}%`;
+  volumePanel.querySelector('button').textContent = siteVolume ? 'Silenciar' : 'Ativar som';
+  volumeIcon.classList.toggle('is-muted', siteVolume === 0);
+  volumeIcon.setAttribute('aria-label', `Volume do site: ${siteVolume}%`);
+  localStorage.setItem('bh-site-volume', siteVolume);
+  document.querySelectorAll('audio,video').forEach(media => media.volume = siteVolume / 100);
+}
+async function playVolumeTone() {
+  if (!siteVolume) return;
+  try {
+    audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+    await audioContext.resume();
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const now = audioContext.currentTime;
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(660, now);
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(siteVolume / 100 * .12, now + .015);
+    gain.gain.exponentialRampToValueAtTime(.0001, now + .22);
+    oscillator.connect(gain); gain.connect(audioContext.destination);
+    oscillator.start(now); oscillator.stop(now + .24);
+  } catch { /* Audio may be unavailable in this browser. */ }
+}
+function toggleVolumePanel() { volumePanel.hidden = !volumePanel.hidden; volumeIcon.setAttribute('aria-expanded', String(!volumePanel.hidden)); if (!volumePanel.hidden) volumeSlider.focus(); }
+volumeIcon.addEventListener('click', toggleVolumePanel);
+volumeIcon.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleVolumePanel(); } });
+volumeSlider.addEventListener('input', () => { siteVolume = Number(volumeSlider.value); updateSiteVolume(); });
+volumeSlider.addEventListener('change', playVolumeTone);
+volumePanel.querySelector('button').addEventListener('click', () => { if (siteVolume) { lastVolume = siteVolume; siteVolume = 0; } else siteVolume = lastVolume; updateSiteVolume(); playVolumeTone(); });
+document.addEventListener('click', event => { if (!volumePanel.contains(event.target) && !volumeIcon.contains(event.target)) { volumePanel.hidden = true; volumeIcon.setAttribute('aria-expanded', 'false'); } });
+document.addEventListener('keydown', event => { if (event.key === 'Escape' && !volumePanel.hidden) { volumePanel.hidden = true; volumeIcon.setAttribute('aria-expanded', 'false'); volumeIcon.focus(); } });
+updateSiteVolume();
 const starField = document.querySelector('#star-field');
 
 for (let index = 0; index < 84; index += 1) {
