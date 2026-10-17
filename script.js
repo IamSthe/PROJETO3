@@ -246,5 +246,6 @@ document.querySelector('#start-button').addEventListener('click', () => {
   win.classList.remove('hidden','minimized');
   bringForward(win);
 });
-function updateClock(){const clock=document.querySelector('#clock');const now=new Date();clock.querySelector('strong').textContent=new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit',hour12:false}).format(now);clock.querySelector('small').textContent=new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}).format(now)}
+document.querySelector('#desktop-clock-slot').append(document.querySelector('#clock'));
+function updateClock(){const clock=document.querySelector('#clock');const now=new Date();clock.querySelector('strong').textContent=new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit',hour12:false}).format(now);clock.querySelector('small').textContent=new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short',year:'numeric'}).format(now).replace(/ de /g,' ').replace('.','').toUpperCase()}
 updateClock(); setInterval(updateClock,1000);
