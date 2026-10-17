@@ -81,6 +81,7 @@ function startDesktop() {
   boot.classList.add('done');
   desktop.classList.add('ready');
   desktop.setAttribute('aria-hidden', 'false');
+  document.dispatchEvent(new CustomEvent('blackhearts-login'));
 }
 
 const loginForm = document.querySelector('#login-form');
@@ -335,7 +336,7 @@ menuCategories.forEach(([key,symbol,title,apps]) => {
     startNav.querySelectorAll('.start-category').forEach(item=>item.setAttribute('aria-expanded','false'));
     submenu.replaceChildren();
     apps.forEach(app=>{const entry=document.createElement('button');entry.type='button';entry.textContent=labels[app];entry.onclick=()=>{closeStartMenu();document.querySelector(`.desktop-icon[data-open="${app}"]`)?.click();};submenu.append(entry);});
-    if(key==='terminal'){const info=document.createElement('p');info.textContent='Terminal · em preparação';submenu.append(info);}
+    if(key==='terminal'){const entry=document.createElement('button');entry.type='button';entry.textContent='Abrir Secure Terminal';entry.onclick=()=>{closeStartMenu();document.dispatchEvent(new CustomEvent('blackhearts-terminal-open'));};submenu.append(entry);}
     if(key==='network'){const info=document.createElement('p');info.textContent=navigator.onLine?'● Conexão ativa · ONLINE':'Sem conexão · OFFLINE';submenu.append(info);}
     if(key==='admin'){const info=document.createElement('p');info.textContent='Gerencie os casos, senhas e subpastas pelos cartões de Casos.';submenu.append(info);}
     submenu.hidden=!opening;button.setAttribute('aria-expanded',String(opening));
@@ -356,7 +357,7 @@ startButton.addEventListener('click',()=>{
 document.addEventListener('pointerdown',event=>{if(!startMenu.contains(event.target)&&!startButton.contains(event.target))closeStartMenu();});
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!startMenu.hidden){closeStartMenu();startButton.focus();}});
 startMenu.querySelector('.start-power').onclick=()=>{
-  closeStartMenu();desktop.classList.remove('ready');desktop.setAttribute('aria-hidden','true');boot.classList.remove('done','loading');startupLoading.setAttribute('aria-hidden','true');passwordInput.value='';passwordInput.focus();
+  closeStartMenu();document.dispatchEvent(new CustomEvent('blackhearts-lock'));desktop.classList.remove('ready');desktop.setAttribute('aria-hidden','true');boot.classList.remove('done','loading');startupLoading.setAttribute('aria-hidden','true');passwordInput.value='';passwordInput.focus();
 };
 document.querySelector('#desktop-clock-slot').append(document.querySelector('#clock'));
 function updateClock(){const clock=document.querySelector('#clock');const now=new Date();clock.querySelector('strong').textContent=new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit',hour12:false}).format(now);clock.querySelector('small').textContent=new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short',year:'numeric'}).format(now).replace(/ de /g,' ').replace('.','').toUpperCase()}
