@@ -53,7 +53,37 @@ function renderProfilePhoto(photo) {
     avatarButton.append(image);
   } else avatarButton.innerHTML = defaultAvatar;
 }
-avatarButton.addEventListener('click', () => avatarInput.click());
+const avatarMenu = document.createElement('div');
+avatarMenu.className = 'avatar-menu';
+avatarMenu.hidden = true;
+avatarMenu.innerHTML = '<button type="button" data-avatar-view>Visualizar foto</button><button type="button" data-avatar-edit>Editar foto</button>';
+document.querySelector('.taskbar-user').append(avatarMenu);
+avatarButton.setAttribute('aria-expanded', 'false');
+const avatarPreview = document.createElement('dialog');
+avatarPreview.className = 'avatar-preview-dialog';
+avatarPreview.setAttribute('aria-label', 'Foto do perfil');
+avatarPreview.innerHTML = '<button type="button" class="avatar-preview-close" aria-label="Fechar visualização">×</button><div class="avatar-preview-circle"></div><p></p>';
+document.body.append(avatarPreview);
+function closeAvatarMenu() { avatarMenu.hidden = true; avatarButton.setAttribute('aria-expanded', 'false'); }
+avatarButton.addEventListener('click', () => {
+  avatarMenu.hidden = !avatarMenu.hidden;
+  avatarButton.setAttribute('aria-expanded', String(!avatarMenu.hidden));
+});
+avatarMenu.querySelector('[data-avatar-edit]').addEventListener('click', () => { closeAvatarMenu(); avatarInput.click(); });
+avatarMenu.querySelector('[data-avatar-view]').addEventListener('click', () => {
+  closeAvatarMenu();
+  const circle = avatarPreview.querySelector('.avatar-preview-circle');
+  circle.replaceChildren();
+  const photo = avatarButton.querySelector('img');
+  if (photo) circle.append(photo.cloneNode(true));
+  else circle.innerHTML = defaultAvatar;
+  avatarPreview.querySelector('p').textContent = activeProfile;
+  avatarPreview.showModal();
+});
+avatarPreview.querySelector('.avatar-preview-close').addEventListener('click', () => avatarPreview.close());
+avatarPreview.addEventListener('click', event => { if (event.target === avatarPreview) { const rect = avatarPreview.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) avatarPreview.close(); } });
+document.addEventListener('click', event => { if (!avatarMenu.contains(event.target) && !avatarButton.contains(event.target)) closeAvatarMenu(); });
+document.addEventListener('keydown', event => { if (event.key === 'Escape') closeAvatarMenu(); });
 avatarInput.addEventListener('change', async () => {
   const file = avatarInput.files[0];
   avatarInput.value = '';
