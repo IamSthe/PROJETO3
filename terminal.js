@@ -36,7 +36,27 @@
     if (usernameInput.value.trim() !== 'sakai' || passwordInput.value !== '123') return;
     try { context ||= new (window.AudioContext || window.webkitAudioContext)(); await context.resume(); } catch {}
   });
-  function tick(now){if(!siteVolume||!context||context.state!=='running'||now-lastSound<85)return;lastSound=now;const osc=context.createOscillator(),gain=context.createGain();osc.type='triangle';osc.frequency.value=700+Math.random()*350;gain.gain.setValueAtTime(siteVolume/100*.018,context.currentTime);gain.gain.exponentialRampToValueAtTime(.0001,context.currentTime+.025);osc.connect(gain);gain.connect(context.destination);osc.start();osc.stop(context.currentTime+.03);}
+  function tick(now) {
+    if (!siteVolume || !context || context.state !== 'running' || now-lastSound < 65) return;
+    lastSound = now;
+    const time = context.currentTime;
+    const oscillator = context.createOscillator();
+    const filter = context.createBiquadFilter();
+    const gain = context.createGain();
+    const notes = [587.33, 659.25, 698.46, 783.99];
+    const pitch = notes[Math.floor(Math.random()*notes.length)];
+    oscillator.type = 'square';
+    oscillator.frequency.setValueAtTime(pitch, time);
+    oscillator.frequency.exponentialRampToValueAtTime(pitch*.86, time+.035);
+    filter.type = 'lowpass';
+    filter.frequency.value = 1800;
+    filter.Q.value = .5;
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(siteVolume/100*.025, time+.003);
+    gain.gain.exponentialRampToValueAtTime(.0001, time+.045);
+    oscillator.connect(filter); filter.connect(gain); gain.connect(context.destination);
+    oscillator.start(time); oscillator.stop(time+.05);
+  }
   function finish(){if(completed)return;completed=true;nodes.forEach((node,i)=>node.textContent=lines[i][2]);const message=document.createElement('div');message.className='terminal-confirmation';message.innerHTML='<strong>IDENTIDADE CONFIRMADA</strong><strong>ACESSO AUTORIZADO — BLACKHEARTS</strong><p>Bem-vindo, Investigador. Seu ambiente operacional está pronto.</p><span>investigador@blackhearts:~$ <b class="terminal-cursor">▌</b></span>';output.append(message);output.scrollTop=output.scrollHeight;progress.style.setProperty('--progress','100%');progress.setAttribute('aria-valuenow','100');status.textContent='Acesso autorizado. Ambiente pronto.';skip.hidden=true;}
   function minimize(){cancelAnimationFrame(frame);finish();task.hidden=false;task.classList.add('is-minimized');panel.classList.add('terminal-minimizing');const current=++generation;setTimeout(()=>{if(current===generation){panel.hidden=true;panel.classList.remove('terminal-minimizing');}},320);}
   function restore(){generation++;panel.classList.remove('terminal-minimizing');panel.hidden=false;task.hidden=false;task.classList.remove('is-minimized');panel.style.zIndex=++topZ+100;output.scrollTop=output.scrollHeight;}
