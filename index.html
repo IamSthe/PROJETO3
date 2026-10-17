@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080d18">
+  <title>Inicialização do Windows</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="boot" id="boot" aria-label="Inicialização do Windows">
+    <div class="boot-content">
+      <img class="brand-logo" src="assents/simbolo.png" alt="Símbolo Black Hearts">
+      <div class="brand-lockup" aria-label="Black Hearts, DAL 1920, Sistema Interno">
+        <h1>BLACK HEARTS</h1>
+        <p>DAL 1920 <span>·</span> SISTEMA INTERNO</p>
+        <div class="brand-divider"><i></i><b>✦</b><i></i></div>
+        <p class="windows-welcome">Bem-vindo</p>
+      </div>
+      <form class="login-card" id="login-form">
+        <label for="username">Nome</label>
+        <input id="username" name="username" type="text" placeholder="Digite seu nome" autocomplete="username" required>
+        <label for="password">Senha</label>
+        <input id="password" name="password" type="password" placeholder="Digite sua senha" autocomplete="current-password" required>
+        <label class="remember-option"><input id="remember-me" type="checkbox"><span>Salvar neste dispositivo</span></label>
+        <p class="login-error" id="login-error" role="alert" aria-live="polite"></p>
+        <button class="login-submit" type="submit">Entrar <span>→</span></button>
+        <p class="login-hint">Exemplo: <strong>sakai</strong> / <strong>123</strong></p>
+      </form>
+    </div>
+    <section class="startup-loading" id="startup-loading" aria-live="polite" aria-hidden="true">
+      <img class="brand-logo loading-logo" src="assents/simbolo.png" alt="">
+      <p class="loading-brand">BLACK HEARTS</p>
+      <div class="startup-spinner" aria-label="Carregando"></div>
+      <p class="startup-status" id="startup-status">Iniciando informações...</p>
+      <div class="startup-progress"><i></i></div>
+    </section>
+    <div class="boot-footer"><span>◉</span> Português (Brasil) <span class="footer-divider"></span> <span>⌨</span> ABNT2</div>
+  </main>
+
+  <main class="desktop" id="desktop" aria-label="Área de trabalho" aria-hidden="true">
+    <div class="desktop-shade"></div>
+    <div class="desktop-icons">
+      <button class="desktop-icon" data-open="case"><span class="folder-icon">📁</span><span>Caso 04-2026</span></button>
+      <button class="desktop-icon" data-open="evidence"><span class="folder-icon">📁</span><span>Evidências</span></button>
+      <button class="desktop-icon" data-open="database"><span class="file-icon">▤</span><span>Banco de dados</span></button>
+      <button class="desktop-icon" data-open="cameras"><span class="camera-icon">◉</span><span>Câmeras</span></button>
+      <button class="desktop-icon" data-open="audio"><span class="audio-icon">◖</span><span>Áudios</span></button>
+      <button class="desktop-icon" data-open="trash"><span class="trash-icon">♧</span><span>Lixeira</span></button>
+    </div>
+
+    <section class="window case-window" data-window="case" aria-label="Caso 04-2026">
+      <header class="window-header"><span class="window-app-icon">📁</span><span>Caso 04-2026</span><div class="window-controls"><button class="minimize" title="Minimizar">−</button><button class="close" title="Fechar">×</button></div></header>
+      <div class="window-content menu-content">
+        <button class="menu-row" data-open="report"><span>▤</span>Relatório inicial <b>›</b></button>
+        <button class="menu-row" data-open="timeline"><span>▤</span>Linha do tempo <b>›</b></button>
+        <button class="menu-row" data-open="suspects"><span>▤</span>Suspeitos <b>›</b></button>
+        <button class="menu-row" data-open="evidence"><span>▤</span>Evidências <b>›</b></button>
+      </div>
+    </section>
+
+    <section class="window evidence-window" data-window="evidence" aria-label="Evidências">
+      <header class="window-header"><span class="window-app-icon">▤</span><span>Evidências</span><div class="window-controls"><button class="minimize" title="Minimizar">−</button><button class="close" title="Fechar">×</button></div></header>
+      <div class="window-content evidence-content"><h1>Evidências</h1><p>EV-001 — Arma sem identificação.</p><p>EV-002 — Impressão criptografada.</p><p>EV-003 — Fotografia antiga.</p></div>
+    </section>
+    <div class="toast" id="toast" role="status"></div>
+    <footer class="taskbar"><button class="start-button" id="start-button" aria-label="Iniciar"><i></i><i></i><i></i><i></i></button><div class="taskbar-search">⌕ <span>Pesquisar</span></div><div class="taskbar-app active-app">📁</div><div class="tray"><span class="network-group"><span class="wifi-status" title="Conexão online"><i></i><i></i><i></i><i></i></span><span class="online-label"><b></b>ONLINE</span></span><span class="volume-icon" aria-label="Áudio ativo" title="Áudio ativo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z"></path><path d="M16 9.5a4 4 0 0 1 0 5M18.5 7a7.5 7.5 0 0 1 0 10"></path></svg></span><time id="clock"><strong>--:--</strong><small>--/--/----</small></time></div></footer>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>
