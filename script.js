@@ -1,5 +1,20 @@
 const boot = document.querySelector('#boot');
 const desktop = document.querySelector('#desktop');
+const starField = document.querySelector('#star-field');
+
+for (let index = 0; index < 84; index += 1) {
+  const star = document.createElement('i');
+  star.className = `star${Math.random() < .18 ? ' is-blue' : ''}`;
+  star.style.setProperty('--size', `${Math.random() < .13 ? 2 : 1}px`);
+  star.style.setProperty('--opacity', `${.22 + Math.random() * .62}`);
+  star.style.setProperty('--duration', `${18 + Math.random() * 28}s`);
+  star.style.setProperty('--delay', `${-Math.random() * 42}s`);
+  star.style.setProperty('--drift-x', `${-20 + Math.random() * 40}px`);
+  star.style.setProperty('--drift-y', `${-28 + Math.random() * 56}px`);
+  star.style.left = `${Math.random() * 100}%`;
+  star.style.top = `${Math.random() * 100}%`;
+  starField.append(star);
+}
 
 function startDesktop() {
   boot.classList.add('done');
