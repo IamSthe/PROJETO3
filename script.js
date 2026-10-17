@@ -253,6 +253,60 @@ document.querySelectorAll('[data-open]').forEach(button => button.addEventListen
     bringForward(win);
   } else showToast(`${labels[name]} — abrindo pasta...`);
 }));
+const iconNameStorageKey = 'bh-icon-names';
+let customIconNames = {};
+try { const stored = JSON.parse(localStorage.getItem(iconNameStorageKey) || '{}'); if (stored && typeof stored === 'object' && !Array.isArray(stored)) customIconNames = stored; } catch {}
+function applyIconName(key, name) {
+  labels[key] = name;
+  document.querySelectorAll('[data-open]').forEach(button => {
+    if (button.dataset.open !== key) return;
+    if (button.classList.contains('desktop-icon')) button.lastElementChild.textContent = name;
+    else { [...button.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).forEach(node => node.remove()); button.insertBefore(document.createTextNode(name + ' '), button.querySelector('b')); }
+    button.setAttribute('aria-label', name);
+  });
+  document.querySelectorAll('[data-window]').forEach(win => {
+    if (win.dataset.window !== key) return;
+    win.setAttribute('aria-label', name);
+    win.querySelector('.window-header > span:nth-child(2)').textContent = name;
+    const title = win.querySelector('h1'); if (title) title.textContent = name;
+  });
+}
+Object.entries(customIconNames).forEach(([key,name]) => { if (Object.hasOwn(labels,key) && typeof name === 'string' && name.trim()) applyIconName(key,name.slice(0,60)); });
+const iconContextMenu = document.createElement('div');
+iconContextMenu.className = 'icon-context-menu';
+iconContextMenu.hidden = true;
+iconContextMenu.innerHTML = '<button type="button">Renomear</button>';
+document.body.append(iconContextMenu);
+const renameDialog = document.createElement('dialog');
+renameDialog.className = 'rename-icon-dialog';
+renameDialog.innerHTML = '<form><h2>Renomear ícone</h2><label for="icon-new-name">Nome</label><input id="icon-new-name" required maxlength="60" autocomplete="off"><p role="alert"></p><div><button type="button" data-cancel>Cancelar</button><button type="submit">Salvar</button></div></form>';
+document.body.append(renameDialog);
+let renameTarget;
+const renameInput = renameDialog.querySelector('input');
+document.querySelectorAll('[data-open]').forEach(button => button.addEventListener('contextmenu', event => {
+  event.preventDefault(); renameTarget = button;
+  iconContextMenu.hidden = false;
+  iconContextMenu.style.left = `${Math.max(0, Math.min(event.clientX, innerWidth - 154))}px`;
+  iconContextMenu.style.top = `${Math.max(0, Math.min(event.clientY, innerHeight - 48))}px`;
+  iconContextMenu.querySelector('button').focus();
+}));
+iconContextMenu.querySelector('button').addEventListener('click', () => {
+  iconContextMenu.hidden = true;
+  renameInput.value = labels[renameTarget.dataset.open];
+  renameDialog.querySelector('p').textContent = '';
+  renameDialog.showModal(); renameInput.select();
+});
+renameDialog.querySelector('[data-cancel]').addEventListener('click', () => renameDialog.close());
+renameDialog.querySelector('form').addEventListener('submit', event => {
+  event.preventDefault(); const name = renameInput.value.trim(); if (!name) { renameInput.setCustomValidity('Informe um nome.'); renameInput.reportValidity(); return; }
+  try { const next = {...customIconNames,[renameTarget.dataset.open]:name}; localStorage.setItem(iconNameStorageKey,JSON.stringify(next)); customIconNames = next; applyIconName(renameTarget.dataset.open,name); renameDialog.close(); }
+  catch { renameDialog.querySelector('p').textContent = 'Não foi possível salvar o nome neste navegador.'; }
+});
+renameInput.addEventListener('input', () => renameInput.setCustomValidity(''));
+renameDialog.addEventListener('close', () => renameTarget?.focus());
+document.addEventListener('pointerdown', event => { if (!iconContextMenu.contains(event.target)) iconContextMenu.hidden = true; });
+document.addEventListener('keydown', event => { if (event.key === 'Escape') iconContextMenu.hidden = true; });
+window.addEventListener('resize', () => iconContextMenu.hidden = true);
 document.querySelector('#start-button').addEventListener('click', () => {
   const win = document.querySelector('[data-window="case"]');
   win.classList.remove('hidden','minimized');
