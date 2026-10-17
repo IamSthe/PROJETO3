@@ -73,7 +73,50 @@
     });
     card.append(button);
   });
-  new MutationObserver(addDeleteButtons).observe(content, {childList:true});
+  const isCaseAdmin = () => document.querySelector('#taskbar-username').textContent.trim().toLowerCase() === 'sakai';
+  const passwordDigest = async (password, salt) => {
+    const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(salt + ':' + password));
+    return Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2,'0')).join('');
+  };
+  const accessDialog = document.createElement('dialog');
+  accessDialog.className = 'rename-icon-dialog case-access-dialog';
+  document.body.append(accessDialog);
+  function requestCasePassword(row, configure = false) {
+    if (configure && !isCaseAdmin()) return;
+    accessDialog.innerHTML = `<form><div class="access-heading"><h2>♙ ${configure?'Senha do caso':'ACESSO RESTRITO'}</h2><button type="button" data-close aria-label="Fechar">×</button></div><p>${configure?'Defina ou altere a senha de':'Este caso requer senha para acesso:'} <strong>${escape(row.name)}</strong></p><input type="password" name="password" aria-label="Senha do caso" placeholder="${configure?'Nova senha…':'Digite a senha…'}" autocomplete="${configure?'new-password':'off'}" ${configure?'minlength="4"':''} required maxlength="128"><p class="password-error" role="alert"></p><div class="access-actions">${configure&&row.passwordHash?'<button type="button" data-remove-password>Remover senha</button>':''}<button type="button" data-cancel>Cancelar</button><button type="submit">${configure?'Salvar':'Acessar'}</button></div></form>`;
+    accessDialog.querySelector('[data-close]').onclick = accessDialog.querySelector('[data-cancel]').onclick = () => accessDialog.close();
+    const removePassword = accessDialog.querySelector('[data-remove-password]');
+    if (removePassword) removePassword.onclick = () => {
+      try { const next=structuredClone(cases), record=next.find(item=>item.id===row.id); delete record.passwordHash; delete record.passwordSalt; persist(next); accessDialog.close(); render(); showToast('Senha removida do caso.'); }
+      catch { accessDialog.querySelector('.password-error').textContent='Não foi possível salvar.'; }
+    };
+    accessDialog.querySelector('form').onsubmit = async event => {
+      event.preventDefault(); const submit=accessDialog.querySelector('[type="submit"]'); submit.disabled=true;
+      try {
+        const password=accessDialog.querySelector('input').value;
+        if(configure){const salt=crypto.randomUUID(),hash=await passwordDigest(password,salt);const next=structuredClone(cases);Object.assign(next.find(item=>item.id===row.id),{passwordSalt:salt,passwordHash:hash});persist(next);accessDialog.close();render();showToast('Senha do caso salva.');}
+        else if(await passwordDigest(password,row.passwordSalt)===row.passwordHash){active=row.id;folder=null;accessDialog.close();render();}
+        else {accessDialog.querySelector('.password-error').textContent='Senha incorreta. Tente novamente.';accessDialog.querySelector('input').select();}
+      } catch {accessDialog.querySelector('.password-error').textContent='Não foi possível concluir. Tente novamente.';} finally {submit.disabled=false;}
+    };
+    accessDialog.showModal(); accessDialog.querySelector('input').focus();
+  }
+  function addPasswordButtons() {
+    content.querySelectorAll('.case-card').forEach(card=>{
+      if(card.querySelector('.case-password'))return;
+      const row=cases.find(item=>item.id===card.querySelector('[data-case]').dataset.case);
+      if(row.passwordHash){const badge=document.createElement('span');badge.className='case-locked-label';badge.textContent='ACESSO RESTRITO';card.append(badge);}
+      if(!isCaseAdmin())return;
+      const button=document.createElement('button');button.type='button';button.className='case-password';button.textContent='⚿';button.title=row.passwordHash?'Alterar senha':'Definir senha';button.setAttribute('aria-label',button.title+' de '+row.name);
+      button.onclick=event=>{event.stopPropagation();requestCasePassword(row,true);};card.append(button);
+    });
+  }
+  content.addEventListener('click',event=>{
+    const button=event.target.closest('[data-case]');if(!button)return;
+    const row=cases.find(item=>item.id===button.dataset.case);
+    if(row?.passwordHash){event.stopImmediatePropagation();requestCasePassword(row);}
+  },true);
+  new MutationObserver(()=>{addDeleteButtons();addPasswordButtons();}).observe(content, {childList:true});
   const editor=document.createElement('dialog'); editor.className='rename-icon-dialog case-editor'; document.body.append(editor);
   function edit(type,id) {
     const record=cases.find(row=>row.id===(id||active));
