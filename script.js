@@ -315,6 +315,7 @@ const menuCategories = [
   ['apps','▦','Todos os Aplicativos',['case','evidence','database','cameras','audio','trash']],
   ['investigation','▰','Investigação',['case','evidence','database']],
   ['tools','⚒','Ferramentas',['database']],
+  ['terminal','terminal','Terminal',[]],
   ['system','⚙','Sistema',['trash']],
   ['network','◎','Rede',[]],
   ['media','▷','Multimídia',['cameras','audio']],
@@ -325,7 +326,7 @@ const startNav = startMenu.querySelector('nav');
 menuCategories.forEach(([key,symbol,title,apps]) => {
   const group = document.createElement('div'); group.className = 'start-menu-group';
   const button = document.createElement('button'); button.type='button'; button.className='start-category'; button.setAttribute('aria-expanded','false');
-  button.innerHTML=`<span class="start-category-icon">${symbol}</span><span>${title}</span><b>›</b>`;
+  button.innerHTML=`<span class="start-category-icon">${symbol==='terminal'?'<svg class="terminal-menu-icon" viewBox="0 0 32 28" aria-hidden="true"><rect x="1" y="1" width="30" height="25" rx="2"/><path d="m7 8 6 5-6 5m9 0h8"/></svg>':symbol}</span><span>${title}</span><b>›</b>`;
   const submenu=document.createElement('div');submenu.className='start-submenu';submenu.hidden=true;
   button.onclick=()=>{
     const opening=submenu.hidden;
@@ -333,6 +334,7 @@ menuCategories.forEach(([key,symbol,title,apps]) => {
     startNav.querySelectorAll('.start-category').forEach(item=>item.setAttribute('aria-expanded','false'));
     submenu.replaceChildren();
     apps.forEach(app=>{const entry=document.createElement('button');entry.type='button';entry.textContent=labels[app];entry.onclick=()=>{closeStartMenu();document.querySelector(`.desktop-icon[data-open="${app}"]`)?.click();};submenu.append(entry);});
+    if(key==='terminal'){const info=document.createElement('p');info.textContent='Terminal · em preparação';submenu.append(info);}
     if(key==='network'){const info=document.createElement('p');info.textContent=navigator.onLine?'● Conexão ativa · ONLINE':'Sem conexão · OFFLINE';submenu.append(info);}
     if(key==='admin'){const info=document.createElement('p');info.textContent='Gerencie os casos, senhas e subpastas pelos cartões de Casos.';submenu.append(info);}
     submenu.hidden=!opening;button.setAttribute('aria-expanded',String(opening));
