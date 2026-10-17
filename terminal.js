@@ -18,7 +18,7 @@
   }
   function scheduleAutoClose() {
     clearTimeout(autoCloseTimer);
-    autoCloseTimer = setTimeout(closeTerminal, 60000);
+    autoCloseTimer = setTimeout(closeTerminal, 20000);
   }
   const lines=[
     [0,0,'BLACKHEARTS INVESTIGATIVE SYSTEM','heading'],[100,0,'Version 4.2.6 | Secure Environment',''],
