@@ -53,6 +53,7 @@ loginForm.addEventListener('submit', event => {
   }
 
   loginError.textContent = '';
+  document.querySelector('#taskbar-username').textContent = username;
   if (rememberCheckbox.checked) {
     localStorage.setItem('windows-demo-login', JSON.stringify({username, password}));
   } else {
