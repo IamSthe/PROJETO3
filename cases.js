@@ -117,6 +117,8 @@
     if(row?.passwordHash){event.stopImmediatePropagation();requestCasePassword(row);}
   },true);
   new MutationObserver(()=>{addDeleteButtons();addPasswordButtons();}).observe(content, {childList:true});
+  // The desktop is rendered before login; refresh admin actions once the user is known.
+  new MutationObserver(() => render()).observe(document.querySelector('#taskbar-username'), {childList:true,characterData:true,subtree:true});
   const editor=document.createElement('dialog'); editor.className='rename-icon-dialog case-editor'; document.body.append(editor);
   function edit(type,id) {
     const record=cases.find(row=>row.id===(id||active));
