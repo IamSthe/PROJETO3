@@ -32,7 +32,7 @@
   try { cases = JSON.parse(localStorage.getItem('bh-cases-v1')); } catch {}
   if (!Array.isArray(cases)) cases = ['LOS ANJOS','DORADONEWS','LSCUSTOMS','STROKEMASTERS','BENNYS','BAHAMAS','ANJOS BEACH','FIREWITCHES'].map((name,index) => ({id:crypto.randomUUID(),name,description:`Investigação sobre ${name}`,status:'active',code:`OPS · ${String(index+1).padStart(6,'0')}`,folders:[]}));
   let active = null, folder = null, filter = 'all', query = '', classification = 'all';
-  let caseOrder='newest', accessFilter='all';
+  let caseOrder='newest', accessFilter='all', priorityFilter='all', filtersOpen=false;
   const normalizeSearch=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR');
   function searchableCase(row){
     const texts=[];
@@ -49,7 +49,7 @@
       return;
     }
     const terms=normalizeSearch(query).trim().split(/\s+/).filter(Boolean);
-    const rows=cases.filter(row=>(filter==='all'||row.status===filter)&&(classification==='all'||(row.classification||'legal')===classification)&&(accessFilter==='all'||(accessFilter==='protected'?!!row.passwordHash:!row.passwordHash))&&terms.every(term=>searchableCase(row).includes(term)));
+    const rows=cases.filter(row=>(filter==='all'||row.status===filter)&&(classification==='all'||(row.classification||'legal')===classification)&&(priorityFilter==='all'||row.status==='priority'||row.priority===true)&&(accessFilter==='all'||(accessFilter==='protected'?!!row.passwordHash:!row.passwordHash))&&terms.every(term=>searchableCase(row).includes(term)));
     rows.sort((a,b)=>caseOrder==='az'?a.name.localeCompare(b.name,'pt-BR'):caseOrder==='za'?b.name.localeCompare(a.name,'pt-BR'):caseOrder==='oldest'?cases.indexOf(a)-cases.indexOf(b):cases.indexOf(b)-cases.indexOf(a));
     content.innerHTML=`<div class="cases-heading"><div><h2>Casos</h2><p>${cases.length} casos · ${cases.filter(row=>row.status==='active').length} ativos</p></div><button data-new-case>＋ NOVO CASO</button></div><input class="cases-search" placeholder="Buscar por nome, código ou descrição…" aria-label="Buscar casos" value="${escape(query)}"><nav class="cases-tabs">${Object.entries({all:'Todas',...statuses}).map(([key,name])=>`<button data-filter="${key}" class="${filter===key?'selected':''}">${name} <small>${cases.filter(row=>key==='all'||row.status===key).length}</small></button>`).join('')}</nav><div class="cases-grid">${rows.map(row=>`<article class="case-card"><button class="case-card-open" data-case="${row.id}"><small><i class="case-state ${row.status}"></i>${escape(row.code)}</small><h3>${escape(row.name)}</h3><p>${escape(row.description)}</p><span>${escape(statuses[row.status] || 'Ativas')}</span></button><button class="case-edit" data-edit-id="${row.id}" aria-label="Editar ${escape(row.name)}">✎</button></article>`).join('')||'<p class="cases-empty">Nenhum caso encontrado.</p>'}</div>`;
   }
@@ -158,14 +158,17 @@
     const toggle=document.createElement('button');toggle.textContent='☷ Filtros';toggle.type='button';toggle.setAttribute('aria-expanded','false');tools.append(toggle);
     const order=document.createElement('select');order.setAttribute('aria-label','Organizar casos');order.innerHTML='<option value="newest">Mais recentes</option><option value="oldest">Mais antigos</option><option value="az">Nome A–Z</option><option value="za">Nome Z–A</option>';order.value=caseOrder;order.onchange=()=>{caseOrder=order.value;render();};tools.append(order);
     const filters=document.createElement('div');filters.className='case-extra-filters';filters.hidden=true;tools.after(filters);
-    const existing=content.querySelector('.classification-filter');if(existing)filters.append(existing);
-    const access=document.createElement('select');access.setAttribute('aria-label','Filtrar acesso');access.innerHTML='<option value="all">Todos os acessos</option><option value="protected">Com senha</option><option value="free">Sem senha</option>';access.value=accessFilter;access.onchange=()=>{accessFilter=access.value;render();};filters.append(access);
-    const clear=document.createElement('button');clear.type='button';clear.textContent='Limpar filtros';clear.onclick=()=>{query='';filter='all';classification='all';accessFilter='all';render();};filters.append(clear);
-    if(classification!=='all'||accessFilter!=='all'){filters.hidden=false;toggle.setAttribute('aria-expanded','true');}
-    toggle.onclick=()=>{filters.hidden=!filters.hidden;toggle.setAttribute('aria-expanded',String(!filters.hidden));};
+    const existing=content.querySelector('.classification-filter');if(existing)existing.hidden=true;
+    const sections=[['TIPO',[['all','Todos'],['legal','Legal'],['illegal','Ilegal']],classification,value=>classification=value],['STATUS',[['all','Todos'],['active','Ativo'],['archived','Arquivado'],['closed','Encerrado']],filter,value=>filter=value],['PRIORIDADE',[['all','Qualquer'],['priority','Com prioridade']],priorityFilter,value=>priorityFilter=value]];
+    sections.forEach(([title,options,selected,setValue])=>{const group=document.createElement('fieldset');const legend=document.createElement('legend');legend.textContent=title;group.append(legend);options.forEach(([value,label])=>{const choice=document.createElement('button');choice.type='button';choice.className='case-filter-choice';choice.setAttribute('aria-pressed',String(value===selected));choice.textContent=label;const dot=document.createElement('span');dot.textContent=value===selected?'●':'';dot.setAttribute('aria-hidden','true');choice.append(dot);choice.onclick=()=>{setValue(value);render();};group.append(choice);});filters.append(group);});
+    const clear=document.createElement('button');clear.type='button';clear.className='case-filter-clear';clear.textContent='Limpar filtros';clear.onclick=()=>{filter='all';classification='all';priorityFilter='all';accessFilter='all';render();};filters.append(clear);
+    filters.hidden=!filtersOpen;toggle.setAttribute('aria-expanded',String(filtersOpen));
+    toggle.onclick=()=>{filtersOpen=!filtersOpen;filters.hidden=!filtersOpen;toggle.setAttribute('aria-expanded',String(filtersOpen));};
     const quick=document.createElement('button');quick.type='button';quick.className='case-quick-note';quick.textContent='▤ Nota rápida';quick.onclick=openQuickNotes;content.querySelector('[data-new-case]').before(quick);
     if(query){const hint=document.createElement('p');hint.className='case-search-hint';hint.textContent=content.querySelectorAll('.case-card').length+' caso(s) encontrado(s). Busca inclui nomes e textos das subpastas.';content.querySelector('.cases-grid').before(hint);}
   }
+  document.addEventListener('pointerdown',event=>{const tools=content.querySelector('.case-search-tools'),menu=content.querySelector('.case-extra-filters');if(filtersOpen&&menu&&!menu.contains(event.target)&&!tools?.contains(event.target)){filtersOpen=false;menu.hidden=true;tools?.querySelector('button')?.setAttribute('aria-expanded','false');}});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&filtersOpen){filtersOpen=false;const menu=content.querySelector('.case-extra-filters');if(menu)menu.hidden=true;const button=content.querySelector('.case-search-tools button');button?.setAttribute('aria-expanded','false');button?.focus();}});
   const quickNotesDialog=document.createElement('dialog');quickNotesDialog.className='rename-icon-dialog quick-case-notes';document.body.append(quickNotesDialog);
   function readCaseNotes(){try{const saved=JSON.parse(localStorage.getItem('bh-case-quick-notes')||'[]');return Array.isArray(saved)?saved:[];}catch{return [];}}
   function openQuickNotes(){
