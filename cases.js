@@ -1,0 +1,47 @@
+(() => {
+  const win = document.querySelector('[data-window="case"]');
+  const content = win.querySelector('.window-content');
+  win.classList.add('cases-browser');
+  win.classList.add('hidden');
+  applyIconName('case', customIconNames.case || 'Casos');
+  const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let cases;
+  try { cases = JSON.parse(localStorage.getItem('bh-cases-v1')); } catch {}
+  if (!Array.isArray(cases)) cases = ['LOS ANJOS','DORADONEWS','LSCUSTOMS','STROKEMASTERS','BENNYS','BAHAMAS','ANJOS BEACH','FIREWITCHES'].map((name,index) => ({id:crypto.randomUUID(),name,description:`Investigação sobre ${name}`,status:'active',code:`OPS · ${String(index+1).padStart(6,'0')}`,folders:[]}));
+  let active = null, folder = null, filter = 'all', query = '';
+  const statuses = {active:'Ativas',priority:'Prioridade',archived:'Arquivadas',closed:'Encerradas'};
+  function persist(next) { localStorage.setItem('bh-cases-v1',JSON.stringify(next)); cases=next; }
+  function render() {
+    const record = cases.find(row=>row.id===active);
+    const sub = record?.folders.find(row=>row.id===folder);
+    if (record) {
+      content.innerHTML = `<button class="case-back" data-back>← ${sub?escape(record.name):'Todos os casos'}</button><div class="cases-heading"><div><h2>${escape(sub?.name || record.name)}</h2><p>${escape(sub?'Subpasta de '+record.name:record.description)}</p></div><button data-edit="${sub?'folder':'case'}">Editar</button></div>${sub?`<div class="case-notes">${escape(sub.notes || 'Nenhuma observação cadastrada.')}</div>`:`<button data-new-folder>＋ Nova subpasta</button><div class="cases-grid">${record.folders.map(item=>`<button class="case-folder" data-folder="${item.id}">${desktopSymbol('folder')}<strong>${escape(item.name)}</strong></button>`).join('') || '<p class="cases-empty">Crie subpastas para organizar este caso.</p>'}</div>`}`;
+      return;
+    }
+    const rows=cases.filter(row=>(filter==='all'||row.status===filter)&&`${row.name} ${row.code} ${row.description}`.toLocaleLowerCase('pt-BR').includes(query.toLocaleLowerCase('pt-BR')));
+    content.innerHTML=`<div class="cases-heading"><div><h2>Casos</h2><p>${cases.length} casos · ${cases.filter(row=>row.status==='active').length} ativos</p></div><button data-new-case>＋ NOVO CASO</button></div><input class="cases-search" placeholder="Buscar por nome, código ou descrição…" aria-label="Buscar casos" value="${escape(query)}"><nav class="cases-tabs">${Object.entries({all:'Todas',...statuses}).map(([key,name])=>`<button data-filter="${key}" class="${filter===key?'selected':''}">${name} <small>${cases.filter(row=>key==='all'||row.status===key).length}</small></button>`).join('')}</nav><div class="cases-grid">${rows.map(row=>`<article class="case-card"><button class="case-card-open" data-case="${row.id}"><small><i class="case-state ${row.status}"></i>${escape(row.code)}</small><h3>${escape(row.name)}</h3><p>${escape(row.description)}</p><span>${escape(statuses[row.status] || 'Ativas')}</span></button><button class="case-edit" data-edit-id="${row.id}" aria-label="Editar ${escape(row.name)}">✎</button></article>`).join('')||'<p class="cases-empty">Nenhum caso encontrado.</p>'}</div>`;
+  }
+  const editor=document.createElement('dialog'); editor.className='rename-icon-dialog case-editor'; document.body.append(editor);
+  function edit(type,id) {
+    const record=cases.find(row=>row.id===(id||active));
+    const sub=record?.folders.find(row=>row.id===folder);
+    const item=type==='folder'?sub:record;
+    editor.innerHTML=`<form><h2>${item?'Editar': 'Novo'} ${type==='folder'?'subpasta':'caso'}</h2><label>Nome<input name="name" required maxlength="80" value="${escape(item?.name||'')}"></label><label>${type==='folder'?'Observações':'Descrição'}<textarea name="description" maxlength="10000">${escape(type==='folder'?item?.notes||'':item?.description||'')}</textarea></label>${type==='case'?`<label>Status<select name="status">${Object.entries(statuses).map(([key,name])=>`<option value="${key}" ${item?.status===key?'selected':''}>${name}</option>`).join('')}</select></label>`:''}<p role="alert"></p><div><button type="button" data-cancel>Cancelar</button><button>Salvar</button></div></form>`;
+    editor.querySelector('[data-cancel]').onclick=()=>editor.close();
+    editor.querySelector('form').onsubmit=event=>{
+      event.preventDefault();const fields=new FormData(event.currentTarget),name=String(fields.get('name')).trim();if(!name)return;
+      const next=structuredClone(cases);
+      if(type==='case'){const values={name,description:String(fields.get('description')),status:fields.get('status')};if(item)Object.assign(next.find(row=>row.id===item.id),values);else next.push({...values,id:crypto.randomUUID(),code:'OPS · '+Date.now().toString(16).slice(-6).toUpperCase(),folders:[]});}
+      else {const parent=next.find(row=>row.id===active),values={name,notes:String(fields.get('description'))};if(sub)Object.assign(parent.folders.find(row=>row.id===sub.id),values);else parent.folders.push({...values,id:crypto.randomUUID()});}
+      try{persist(next);editor.close();render();}catch{editor.querySelector('p').textContent='Não foi possível salvar neste navegador.';}
+    };editor.showModal();
+  }
+  content.addEventListener('click',event=>{const button=event.target.closest('button');if(!button)return;if(button.hasAttribute('data-back')){if(folder)folder=null;else active=null;}if(button.dataset.case)active=button.dataset.case;if(button.dataset.folder)folder=button.dataset.folder;if(button.dataset.filter)filter=button.dataset.filter;if(button.hasAttribute('data-new-case'))return edit('case');if(button.hasAttribute('data-new-folder'))return edit('folder');if(button.dataset.editId)return edit('case',button.dataset.editId);if(button.dataset.edit)return edit(button.dataset.edit);render();});
+  content.addEventListener('input',event=>{if(event.target.matches('.cases-search')){query=event.target.value;const cursor=event.target.selectionStart;render();const input=content.querySelector('.cases-search');input.focus();input.setSelectionRange(cursor,cursor);}});
+  // Keep a taskbar button for every open window, including minimized windows.
+  document.querySelector('.taskbar-app').remove();
+  const tasks=document.createElement('div');tasks.className='window-tasks';document.querySelector('.tray').before(tasks);
+  const syncTasks=()=>{tasks.replaceChildren();document.querySelectorAll('.window').forEach(item=>{if(item.classList.contains('hidden'))return;const task=document.createElement('button');task.className='window-task';task.innerHTML=desktopSymbol('folder');const name=item.querySelector('.window-header > span:nth-child(2)').textContent;task.title=name;task.setAttribute('aria-label','Restaurar '+name);task.classList.toggle('is-minimized',item.classList.contains('minimized'));task.onclick=()=>{item.classList.remove('minimized');bringForward(item);};tasks.append(task);});};
+  document.querySelectorAll('.window').forEach(item=>new MutationObserver(syncTasks).observe(item,{attributes:true,attributeFilter:['class']}));
+  render();syncTasks();
+})();
