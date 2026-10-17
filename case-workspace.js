@@ -10,6 +10,37 @@
     const controller=new AbortController();let current=structuredClone(source),selected=null,view='board',activeFolder=null,zoom=1,search='';
     const dialog=document.createElement('dialog');dialog.className='iw-editor rename-icon-dialog';document.body.append(dialog);
     const elements=()=>current.elements||[];
+    let linking=false,linkSource=null,suppressClick=false;
+    zoom=current.boardViewport?.zoom||1;
+    const relationships=['Conhece','Lidera','Frequenta','Investiga','Utiliza','Associado','Personalizado'];
+    function editLink(from,to,id){
+      const old=(current.links||[]).find(row=>row.id===id);
+      const custom=old&&!relationships.includes(old.label);
+      form(old?'Editar vínculo':'Tipo de relação',`<label>Relação<select name="relation">${relationships.map(name=>`<option ${old&&(custom?name==='Personalizado':name===old.label)?'selected':''}>${name}</option>`).join('')}</select></label><label>Relação personalizada<input name="custom" maxlength="80" value="${esc(custom?old.label:'')}"></label>${old?'<button type="button" data-delete-link>Excluir vínculo</button>':''}`,fields=>{
+        const label=fields.get('relation')==='Personalizado'?String(fields.get('custom')).trim():fields.get('relation');if(!label)throw Error('Informe a relação personalizada.');
+        const next=structuredClone(current);next.links ||= [];
+        if(old)Object.assign(next.links.find(row=>row.id===id),{label});else next.links.push({id:crypto.randomUUID(),from,to,label});
+        linking=false;linkSource=null;return commit(next);
+      });
+      const remove=dialog.querySelector('[data-delete-link]');if(remove)remove.onclick=()=>{const next=structuredClone(current);next.links=next.links.filter(row=>row.id!==id);if(commit(next)){dialog.close();draw();}};
+    }
+    function refreshConnections(){
+      const board=host.querySelector('.iw-board'),svg=board?.querySelector('.iw-links');if(!svg)return;
+      const zoomLabel=host.querySelector('.iw-board-heading>div>span');if(zoomLabel)zoomLabel.textContent=Math.round(zoom*100)+'%';
+      const boxes=new Map([...board.querySelectorAll('.iw-node')].map(node=>[node.dataset.node,{x:parseFloat(node.style.left)||0,y:parseFloat(node.style.top)||0,w:node.offsetWidth,h:node.offsetHeight}]));
+      svg.innerHTML=(current.links||[]).map(link=>{
+        const a=boxes.get(link.from),b=boxes.get(link.to);if(!a||!b)return '';
+        const right=b.x+b.w/2>=a.x+a.w/2;
+        const x1=right?a.x+a.w:a.x,y1=a.y+a.h/2,x2=right?b.x:b.x+b.w,y2=b.y+b.h/2;
+        let mid=(x1+x2)/2,points=[[x1,y1],[mid,y1],[mid,y2],[x2,y2]];
+        const others=[...boxes.entries()].filter(([id])=>id!==link.from&&id!==link.to).map(([,box])=>box);
+        const blocked=points.some((point,i)=>{if(!i)return false;const previous=points[i-1];return others.some(box=>Math.max(previous[0],point[0])>box.x-10&&Math.min(previous[0],point[0])<box.x+box.w+10&&Math.max(previous[1],point[1])>box.y-10&&Math.min(previous[1],point[1])<box.y+box.h+10);});
+        let lx=mid,ly=(y1+y2)/2;
+        if(blocked||Math.abs(x1-x2)<40){const lane=Math.min(board.offsetHeight-18,Math.max(a.y+a.h,b.y+b.h,...others.map(box=>box.y+box.h))+24);const exit1=x1+(right?16:-16),exit2=x2+(right?-16:16);points=[[x1,y1],[exit1,y1],[exit1,lane],[exit2,lane],[exit2,y2],[x2,y2]];lx=(exit1+exit2)/2;ly=lane;}
+        const path=points.map((point,i)=>(i?'L':'M')+point.join(',')).join(' ');
+        return `<g class="iw-connection" data-connection="${esc(link.id)}" role="button" tabindex="0" aria-label="Editar vínculo"><path class="iw-link-hit" d="${path}"/><path class="iw-link-path" d="${path}"/><text x="${lx}" y="${ly-8}">${esc(link.label)}</text></g>`;
+      }).join('');
+    }
     function commit(next){try{api.save(next);current=next;return true;}catch{showToast('Não foi possível salvar. O armazenamento do navegador pode estar cheio.');return false;}}
     function form(title,fields,submit){
       dialog.innerHTML=`<form><h2>${esc(title)}</h2>${fields}<p role="alert"></p><div><button type="button" data-cancel>Cancelar</button><button type="submit">Salvar</button></div></form>`;
@@ -46,10 +77,18 @@
       return boardMarkup();
     }
     function draw(){
+      const previousScroll=host.querySelector('.iw-board-scroll');const scroll={left:previousScroll?.scrollLeft||current.boardViewport?.left||0,top:previousScroll?.scrollTop||current.boardViewport?.top||0};
       const item=elements().find(row=>row.id===selected);const related=(current.links||[]).filter(link=>link.from===selected||link.to===selected);
       const folders=current.folders||[];
       host.innerHTML=`<div class="iw-workspace"><header class="iw-header"><div class="iw-brand"><img src="assents/simbolo.png" alt="Blackhearts"><div><strong>BLACKHEARTS</strong><small>DEPARTAMENTO DE INVESTIGAÇÃO</small></div></div><nav>${[['board','▣','CASOS'],['map','⌖','MAPA'],['analysis','⌘','ANÁLISE'],['intel','◈','INTELIGÊNCIA'],['reports','▤','RELATÓRIOS'],['tools','⚒','FERRAMENTAS']].map(([key,icon,name])=>`<button class="${view===key?'selected':''}" data-view="${key}">${icon} <span>${name}</span></button>`).join('')}</nav><button data-iw="all">← Todos os casos</button></header><div class="iw-columns"><aside class="iw-sidebar"><section><h3>CASO ATIVO</h3><div class="iw-case-identity">${current.photo?`<img src="${esc(current.photo)}" alt="Foto do caso">`:''}<strong>${esc(current.name)}</strong><small>${esc(current.code)}</small><p>${esc(current.description||'Investigação sobre: '+current.name)}</p><span class="iw-status">● ${esc({active:'Em andamento',priority:'Prioritário',archived:'Arquivado',closed:'Encerrado'}[current.status]||current.status)}</span></div></section><section><h3>PASTAS DO CASO</h3>${folderNames.map(name=>{const folder=folders.find(row=>row.name===name);return `<button data-default-folder="${name}">▰ ${name}<small>${folder?'1 registro':'0 registros'}</small></button>`;}).join('')}${folders.filter(row=>!folderNames.includes(row.name)).map(row=>`<button data-folder-open="${row.id}">▰ ${esc(row.name)}</button>`).join('')}<button data-iw="new-folder">＋ Nova subpasta</button></section><section><h3>AÇÕES RÁPIDAS</h3><button data-iw="new-element">⊕ Adicionar elemento</button><button data-iw="link">⌘ Vincular elemento</button><button data-iw="report">▤ Gerar relatório</button><button data-iw="notes">✎ Nota rápida</button><button data-iw="edit-case">Editar caso</button></section></aside><main class="iw-center"><div class="iw-board-heading"><strong>♧ QUADRO DE INVESTIGAÇÃO</strong><div><input data-board-search placeholder="Buscar elemento…" aria-label="Buscar elemento" value="${esc(search)}"><button data-iw="zoom-out" aria-label="Diminuir zoom">−</button><span>${Math.round(zoom*100)}%</span><button data-iw="zoom-in" aria-label="Aumentar zoom">＋</button></div></div>${mainMarkup()}<section class="iw-media"><h3>MÍDIA E EVIDÊNCIAS <button data-iw="new-element">＋ Adicionar</button></h3><div>${elements().filter(row=>row.photo).map(row=>`<button data-node="${row.id}"><img src="${esc(row.photo)}" alt="${esc(row.name)}"><span>${esc(row.name)}</span></button>`).join('')||'<p>Nenhuma imagem adicionada. Use “Adicionar elemento” para anexar uma foto.</p>'}</div></section></main><aside class="iw-details"><h3>DETALHES DO ELEMENTO</h3>${item?`<div class="iw-detail-card">${item.photo?`<img src="${esc(item.photo)}" alt="${esc(item.name)}">`:''}<small>${esc(types[item.type])}</small><h2>${esc(item.name)}</h2><span>${esc(item.code||'Sem identificação')}</span><dl><dt>Status</dt><dd>${esc(item.status||'Em análise')}</dd><dt>Observações</dt><dd class="iw-preserve">${esc(item.notes||'Nenhuma observação.')}</dd></dl><button data-iw="edit-element">Editar elemento</button><button class="iw-danger" data-iw="delete-element">Excluir elemento</button></div><h3>ELEMENTOS RELACIONADOS</h3>${related.map(link=>{const other=elements().find(row=>row.id===(link.from===selected?link.to:link.from));return `<button data-node="${other?.id}">${esc(other?.name)}<small>${esc(link.label)}</small></button>`;}).join('')||'<p>Nenhum vínculo cadastrado.</p>'}`:'<div class="iw-detail-empty">Selecione um elemento no quadro para consultar informações, vínculos e observações.</div>'}</aside></div></div>`;
     }
+    // Intercept connection editing and the two-card linking mode.
+    host.addEventListener('click',event=>{
+      if(suppressClick){event.stopImmediatePropagation();suppressClick=false;return;}
+      const connection=event.target.closest('[data-connection]');if(connection){event.stopImmediatePropagation();const link=current.links.find(row=>row.id===connection.dataset.connection);editLink(link.from,link.to,link.id);return;}
+      const linkButton=event.target.closest('[data-iw="link"]');if(linkButton){event.stopImmediatePropagation();linking=!linking;linkSource=null;showToast(linking?'Selecione dois cartões para vincular.':'Vinculação cancelada.');host.querySelector('.iw-board')?.classList.toggle('is-linking',linking);return;}
+      const node=event.target.closest('.iw-node');if(linking&&node){event.stopImmediatePropagation();if(!linkSource){linkSource=node.dataset.node;host.querySelectorAll('.iw-node').forEach(card=>card.classList.toggle('link-source',card===node));}else if(linkSource!==node.dataset.node)editLink(linkSource,node.dataset.node);return;}
+    },{capture:true,signal:controller.signal});
     host.addEventListener('click',event=>{
       const button=event.target.closest('button');if(!button)return;
       // These controls are owned by the case workspace, not the previous case screen.
@@ -66,10 +105,15 @@
     },{capture:true,signal:controller.signal});
     host.addEventListener('input',event=>{if(!event.target.matches('[data-board-search]'))return;search=event.target.value.toLocaleLowerCase('pt-BR');const cursor=event.target.selectionStart;draw();const input=host.querySelector('[data-board-search]');input.focus();input.setSelectionRange(cursor,cursor);},{signal:controller.signal});
     let drag;
-    host.addEventListener('pointerdown',event=>{const handle=event.target.closest('[data-drag]');if(!handle)return;const item=elements().find(row=>row.id===handle.dataset.drag);drag={id:item.id,startX:event.clientX,startY:event.clientY,x:item.x||0,y:item.y||0,node:handle.closest('.iw-node'),moved:false};handle.setPointerCapture(event.pointerId);},{signal:controller.signal});
-    host.addEventListener('pointermove',event=>{if(!drag)return;const x=Math.max(0,drag.x+(event.clientX-drag.startX)/zoom),y=Math.max(0,drag.y+(event.clientY-drag.startY)/zoom);drag.newX=x;drag.newY=y;drag.moved ||= Math.abs(x-drag.x)+Math.abs(y-drag.y)>3;drag.node.style.left=x+'px';drag.node.style.top=y+'px';},{signal:controller.signal});
-    host.addEventListener('pointerup',()=>{if(!drag)return;if(drag.moved){const next=structuredClone(current);Object.assign(next.elements.find(row=>row.id===drag.id),{x:Math.round(drag.newX),y:Math.round(drag.newY)});commit(next);draw();}drag=null;},{signal:controller.signal});
+    host.addEventListener('pointerdown',event=>{if(event.button!==0||linking)return;const node=event.target.closest('.iw-node');const board=host.querySelector('.iw-board');if(!node||!board)return;const item=elements().find(row=>row.id===node.dataset.node),scroll=board.parentElement;drag={id:item.id,startX:event.clientX,startY:event.clientY,x:item.x||0,y:item.y||0,node,board,left:scroll.scrollLeft,top:scroll.scrollTop,moved:false};node.setPointerCapture(event.pointerId);node.classList.add('dragging');},{signal:controller.signal});
+    host.addEventListener('pointermove',event=>{if(!drag)return;const scroll=drag.board.parentElement;const x=Math.max(0,Math.min(drag.board.offsetWidth-drag.node.offsetWidth,drag.x+(event.clientX-drag.startX+scroll.scrollLeft-drag.left)/zoom)),y=Math.max(0,Math.min(drag.board.offsetHeight-drag.node.offsetHeight,drag.y+(event.clientY-drag.startY+scroll.scrollTop-drag.top)/zoom));drag.newX=x;drag.newY=y;drag.moved ||= Math.abs(x-drag.x)+Math.abs(y-drag.y)>3;drag.node.style.left=x+'px';drag.node.style.top=y+'px';refreshConnections();},{signal:controller.signal});
+    host.addEventListener('pointerup',()=>{if(!drag)return;drag.node.classList.remove('dragging');if(drag.moved){suppressClick=true;const next=structuredClone(current);Object.assign(next.elements.find(row=>row.id===drag.id),{x:Math.round(drag.newX),y:Math.round(drag.newY)});commit(next);}drag=null;refreshConnections();},{signal:controller.signal});
     host.addEventListener('pointercancel',()=>{drag=null;draw();},{signal:controller.signal});
-    dispose=()=>{controller.abort();dialog.remove();};draw();
+    host.addEventListener('wheel',event=>{const scroll=event.target.closest('.iw-board-scroll');if(!scroll)return;event.preventDefault();const board=scroll.querySelector('.iw-board'),rect=scroll.getBoundingClientRect(),px=event.clientX-rect.left,py=event.clientY-rect.top,wx=(scroll.scrollLeft+px)/zoom,wy=(scroll.scrollTop+py)/zoom;zoom=Math.max(.4,Math.min(2,zoom*(event.deltaY<0?1.1:1/1.1)));board.style.zoom=zoom;scroll.scrollLeft=wx*zoom-px;scroll.scrollTop=wy*zoom-py;const next=structuredClone(current);next.boardViewport={zoom,left:scroll.scrollLeft,top:scroll.scrollTop};commit(next);refreshConnections();},{passive:false,signal:controller.signal});
+    host.addEventListener('keydown',event=>{const group=event.target.closest('[data-connection]');if(group&&(event.key==='Enter'||event.key===' ')){event.preventDefault();const link=current.links.find(row=>row.id===group.dataset.connection);editLink(link.from,link.to,link.id);}if(event.key==='Escape'){linking=false;linkSource=null;host.querySelector('.iw-board')?.classList.remove('is-linking');host.querySelectorAll('.link-source').forEach(node=>node.classList.remove('link-source'));}},{signal:controller.signal});
+    const observer=new MutationObserver(()=>{refreshConnections();});observer.observe(host,{childList:true});
+    const resizeObserver=new ResizeObserver(refreshConnections);resizeObserver.observe(host);
+    host.addEventListener('load',refreshConnections,{capture:true,signal:controller.signal});
+    dispose=()=>{controller.abort();observer.disconnect();resizeObserver.disconnect();dialog.remove();};draw();refreshConnections();
   };
 })();
