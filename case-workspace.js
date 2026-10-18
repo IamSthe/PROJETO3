@@ -21,7 +21,16 @@
     evidenceNotepad.querySelector('[data-close-notepad]').onclick=()=>evidenceNotepad.close();
     evidenceNotepad.querySelector('[data-evidence-records]').onclick=()=>{evidenceNotepad.close();view='evidence';activeFolder=null;draw();};
     evidenceNotepad.querySelector('form').onsubmit=event=>{event.preventDefault();const next=structuredClone(current);next.evidenceNotes=evidenceNotepad.querySelector('textarea').value;if(commit(next))evidenceNotepad.querySelector('[role="status"]').textContent='Informações salvas.';};
-    function openEvidenceNotepad(){evidenceNotepad.querySelector('textarea').value=current.evidenceNotes||'';evidenceNotepad.querySelector('[role="status"]').textContent='';if(!evidenceNotepad.open)evidenceNotepad.showModal();evidenceNotepad.querySelector('textarea').focus();}
+    const addEvidenceLine=document.createElement('button');addEvidenceLine.type='button';addEvidenceLine.textContent='＋ Adicionar linha';addEvidenceLine.className='add-evidence-line';evidenceNotepad.querySelector('textarea').after(addEvidenceLine);
+    addEvidenceLine.onclick=()=>{
+      const input=evidenceNotepad.querySelector('textarea');
+      const numbers=[...input.value.matchAll(/\bEV-(\d+)\b/gi)].map(match=>Number(match[1]));
+      const number=Math.max(0,...numbers)+1;
+      const entry=(input.value.trimEnd()?'\n\n':'')+'EV-'+String(number).padStart(3,'0')+' — ';
+      if(input.value.trimEnd().length+entry.length>input.maxLength){evidenceNotepad.querySelector('[role="status"]').textContent='Limite de texto atingido.';return;}
+      input.value=input.value.trimEnd()+entry;input.focus();input.setSelectionRange(input.value.length,input.value.length);input.scrollTop=input.scrollHeight;evidenceNotepad.querySelector('[role="status"]').textContent='Nova linha adicionada. Clique em Salvar para guardar.';
+    };
+    function openEvidenceNotepad(){evidenceNotepad.querySelector('textarea').value=current.evidenceNotes||'EV-001 — ';evidenceNotepad.querySelector('[role="status"]').textContent='';if(!evidenceNotepad.open)evidenceNotepad.showModal();const input=evidenceNotepad.querySelector('textarea');input.focus();input.setSelectionRange(input.value.length,input.value.length);}
     let linking=false,linkSource=null,suppressClick=false,handMode=false,pan=null,viewportTimer;
     let viewport={left:current.boardViewport?.left||0,top:current.boardViewport?.top||0};
     zoom=current.boardViewport?.zoom||1;
