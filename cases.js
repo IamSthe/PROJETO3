@@ -263,7 +263,18 @@
     };editor.showModal();
   }
   content.addEventListener('click',event=>{const button=event.target.closest('button');if(!button)return;if(button.hasAttribute('data-back')){if(folder)folder=null;else active=null;}if(button.dataset.case)active=button.dataset.case;if(button.dataset.folder)folder=button.dataset.folder;if(button.dataset.filter)filter=button.dataset.filter;if(button.hasAttribute('data-new-case'))return edit('case');if(button.hasAttribute('data-new-folder'))return edit('folder');if(button.dataset.editId)return edit('case',button.dataset.editId);if(button.dataset.edit)return edit(button.dataset.edit);render();});
-  content.addEventListener('input',event=>{if(event.target.matches('.cases-search')){query=event.target.value;const cursor=event.target.selectionStart;render();const input=content.querySelector('.cases-search');input.focus();input.setSelectionRange(cursor,cursor);}});
+  content.addEventListener('input',event=>{
+    if(!event.target.matches('.cases-search'))return;
+    query=event.target.value;
+    const start=event.target.selectionStart,end=event.target.selectionEnd;
+    render();
+    // Finish toolbar placement before focusing: moving a focused input drops focus.
+    addClassificationFilter();
+    enhanceSearchTools();
+    const input=content.querySelector('.cases-search');
+    input.focus({preventScroll:true});
+    input.setSelectionRange(start,end);
+  });
   // Keep a taskbar button for every open window, including minimized windows.
   document.querySelector('.taskbar-app').remove();
   const tasks=document.createElement('div');tasks.className='window-tasks';document.querySelector('.tray').before(tasks);
