@@ -136,6 +136,6 @@
     const observer=new MutationObserver(()=>{prepareBoard();refreshConnections();addEvidenceShortcut();});observer.observe(host,{childList:true});
     const resizeObserver=new ResizeObserver(refreshConnections);resizeObserver.observe(host);
     host.addEventListener('load',refreshConnections,{capture:true,signal:controller.signal});
-    dispose=()=>{clearTimeout(viewportTimer);saveViewport();controller.abort();observer.disconnect();resizeObserver.disconnect();dialog.remove();};draw();prepareBoard();refreshConnections();
+    dispose=()=>{clearTimeout(viewportTimer);controller.abort();observer.disconnect();resizeObserver.disconnect();dialog.remove();};draw();prepareBoard();refreshConnections();
   };
 })();
