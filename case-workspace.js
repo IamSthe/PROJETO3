@@ -25,6 +25,18 @@
       });
       const remove=dialog.querySelector('[data-delete-link]');if(remove)remove.onclick=()=>{const next=structuredClone(current);next.links=next.links.filter(row=>row.id!==id);if(commit(next)){dialog.close();draw();}};
     }
+    function openLinkChooser(){
+      if(elements().length<2){showToast('Adicione pelo menos dois elementos para criar um vínculo.');return;}
+      linking=false;linkSource=null;handMode=false;suppressClick=false;
+      const options=elements().map(row=>`<option value="${esc(row.id)}">${esc(row.name)}</option>`).join('');
+      form('Vincular elementos',`<label>Primeiro elemento<select name="from">${options}</select></label><label>Segundo elemento<select name="to">${options}</select></label><label>Tipo de relação<select name="relation">${relationships.map(name=>`<option>${name}</option>`).join('')}</select></label><label>Relação personalizada<input name="custom" maxlength="80" placeholder="Preencha ao escolher Personalizado"></label><button type="button" data-pick-on-board>Selecionar cartões no quadro</button>`,fields=>{
+        const from=fields.get('from'),to=fields.get('to');if(from===to)throw Error('Escolha dois elementos diferentes.');
+        const label=fields.get('relation')==='Personalizado'?String(fields.get('custom')).trim():fields.get('relation');if(!label)throw Error('Informe a relação personalizada.');
+        const next=structuredClone(current);next.links ||= [];next.links.push({id:crypto.randomUUID(),from,to,label});return commit(next);
+      });
+      dialog.querySelector('[name="to"]').selectedIndex=1;
+      dialog.querySelector('[data-pick-on-board]').onclick=()=>{dialog.close();view='board';activeFolder=null;linking=true;draw();updateLinkMode();};
+    }
     function refreshConnections(){
       applyWorkspaceFactionColor(host,current);
       const board=host.querySelector('.iw-board'),svg=board?.querySelector('.iw-links');if(!svg)return;
@@ -94,9 +106,9 @@
       if(control?.dataset.editEvidence){event.stopImmediatePropagation();editElement(control.dataset.editEvidence);return;}
       if(control?.dataset.viewEvidence){event.stopImmediatePropagation();selected=control.dataset.viewEvidence;view='board';activeFolder=null;draw();return;}
       if(control?.dataset.deleteEvidence){event.stopImmediatePropagation();if(!confirm('Excluir esta evidência e seus vínculos?'))return;const id=control.dataset.deleteEvidence,next=structuredClone(current);next.elements=elements().filter(row=>row.id!==id);next.links=(next.links||[]).filter(row=>row.from!==id&&row.to!==id);if(commit(next)){if(selected===id)selected=null;draw();}return;}
+      if(event.target.closest('[data-iw="link"]')){event.stopImmediatePropagation();if(linking){linking=false;linkSource=null;updateLinkMode();}else openLinkChooser();return;}
       if(suppressClick){event.stopImmediatePropagation();suppressClick=false;return;}
       const connection=event.target.closest('[data-connection]');if(connection){event.stopImmediatePropagation();const link=current.links.find(row=>row.id===connection.dataset.connection);editLink(link.from,link.to,link.id);return;}
-      const linkButton=event.target.closest('[data-iw="link"]');if(linkButton){event.stopImmediatePropagation();if(elements().length<2){showToast('Adicione pelo menos dois elementos para criar um vínculo.');return;}linking=!linking;linkSource=null;handMode=false;suppressClick=false;view='board';activeFolder=null;draw();updateLinkMode();return;}
       const node=event.target.closest('.iw-node');if(linking&&node){event.stopImmediatePropagation();if(!linkSource){linkSource=node.dataset.node;updateLinkMode();}else if(linkSource!==node.dataset.node)editLink(linkSource,node.dataset.node);return;}
     },{capture:true,signal:controller.signal});
     host.addEventListener('click',event=>{
