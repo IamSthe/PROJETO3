@@ -40,7 +40,8 @@
     visit(row);texts.push('Investigação sobre: '+row.name);return normalizeSearch(texts.join(' '));
   }
   const statuses = {active:'Ativas',priority:'Prioridade',archived:'Arquivadas',closed:'Encerradas'};
-  function persist(next) { localStorage.setItem('bh-cases-v1',JSON.stringify(next)); cases=next; }
+  function persist(next) { if(window.BHBackend?.enabled)BHBackend.save(next);else localStorage.setItem('bh-cases-v1',JSON.stringify(next));cases=next; }
+  document.addEventListener('blackhearts-server-cases',event=>{cases=event.detail;active=null;folder=null;render();});
   function render() {
     window.disposeCaseWorkspace?.();
     const record = cases.find(row=>row.id===active);
@@ -79,6 +80,7 @@
     deletingCaseId = null;
   });
   const addDeleteButtons = () => content.querySelectorAll('.case-card').forEach(card => {
+    if(window.BHBackend?.enabled&&BHBackend.user?.role!=='admin')return;
     if (card.querySelector('.case-delete')) return;
     const button = document.createElement('button');
     button.type = 'button'; button.className = 'case-delete'; button.textContent = '×';
@@ -116,7 +118,7 @@
     grid.prepend(button);
     content.querySelector('.cases-empty')?.remove();
   }
-  const isCaseAdmin = () => document.querySelector('#taskbar-username').textContent.trim().toLowerCase() === 'sakai';
+  const isCaseAdmin = () => window.BHBackend?.enabled?BHBackend.user?.role==='admin':document.querySelector('#taskbar-username').textContent.trim().toLowerCase() === 'sakai';
   const passwordDigest = async (password, salt) => {
     const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(salt + ':' + password));
     return Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2,'0')).join('');

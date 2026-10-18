@@ -35,7 +35,7 @@
   ];
   // Activate audio during the login gesture, before the loading screen finishes.
   document.querySelector('#login-form').addEventListener('submit', async () => {
-    if (usernameInput.value.trim() !== 'sakai' || passwordInput.value !== '123') return;
+    if (!usernameInput.value.trim() || !passwordInput.value) return;
     try { context ||= new (window.AudioContext || window.webkitAudioContext)(); await context.resume(); } catch {}
   });
   function tick(now) {
@@ -75,9 +75,9 @@
   panel.querySelector('[data-close]').onclick=()=>{generation++;cancelAnimationFrame(frame);finish();panel.hidden=true;task.hidden=true;};
   document.addEventListener('blackhearts-login',start);
   document.addEventListener('blackhearts-login',scheduleAutoClose);
-  document.addEventListener('blackhearts-terminal-open',()=>{if(activeProfile.toLowerCase()==='sakai')scheduleAutoClose();});
+  document.addEventListener('blackhearts-terminal-open',()=>{if(BHBackend.enabled?BHBackend.user?.role==='admin':activeProfile.toLowerCase()==='sakai')scheduleAutoClose();});
   document.addEventListener('blackhearts-lock',closeTerminal);
   panel.querySelector('[data-close]').addEventListener('click',()=>clearTimeout(autoCloseTimer));
-  document.addEventListener('blackhearts-terminal-open',()=>{if(activeProfile.toLowerCase()==='sakai')restore();});
+  document.addEventListener('blackhearts-terminal-open',()=>{if(BHBackend.enabled?BHBackend.user?.role==='admin':activeProfile.toLowerCase()==='sakai')restore();});
   document.addEventListener('blackhearts-lock',()=>{generation++;cancelAnimationFrame(frame);panel.hidden=true;panel.classList.remove('terminal-minimizing');task.hidden=true;});
 })();

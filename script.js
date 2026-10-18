@@ -172,19 +172,23 @@ if (savedLogin) {
   try {
     const credentials = JSON.parse(savedLogin);
     usernameInput.value = credentials.username || '';
-    passwordInput.value = credentials.password || '';
+    passwordInput.value = '';
+    if(credentials.password)localStorage.setItem('windows-demo-login',JSON.stringify({username:credentials.username||''}));
     rememberCheckbox.checked = true;
   } catch {
     localStorage.removeItem('windows-demo-login');
   }
 }
 
-loginForm.addEventListener('submit', event => {
+loginForm.addEventListener('submit', async event => {
   event.preventDefault();
   const username = usernameInput.value.trim();
   const password = passwordInput.value;
 
-  if (username !== 'sakai' || password !== '123') {
+  if (window.BHBackend?.enabled) {
+    try { await BHBackend.login(username,password); }
+    catch(error) { loginError.textContent=error.message; return; }
+  } else if (username !== 'sakai' || password !== '123') {
     loginError.textContent = 'Nome ou senha incorretos. Confira os dados e tente novamente.';
     passwordInput.focus();
     return;
@@ -195,7 +199,7 @@ loginForm.addEventListener('submit', event => {
   activeProfile = username;
   renderProfilePhoto(localStorage.getItem(`bh-profile-photo:${username.toLocaleLowerCase('pt-BR')}`));
   if (rememberCheckbox.checked) {
-    localStorage.setItem('windows-demo-login', JSON.stringify({username, password}));
+    localStorage.setItem('windows-demo-login', JSON.stringify({username}));
   } else {
     localStorage.removeItem('windows-demo-login');
   }
@@ -338,7 +342,7 @@ menuCategories.forEach(([key,symbol,title,apps]) => {
     apps.forEach(app=>{const entry=document.createElement('button');entry.type='button';entry.textContent=labels[app];entry.onclick=()=>{closeStartMenu();document.querySelector(`.desktop-icon[data-open="${app}"]`)?.click();};submenu.append(entry);});
     if(key==='terminal'){const entry=document.createElement('button');entry.type='button';entry.textContent='Abrir Secure Terminal';entry.onclick=()=>{closeStartMenu();document.dispatchEvent(new CustomEvent('blackhearts-terminal-open'));};submenu.append(entry);}
     if(key==='network'){const info=document.createElement('p');info.textContent=navigator.onLine?'● Conexão ativa · ONLINE':'Sem conexão · OFFLINE';submenu.append(info);}
-    if(key==='admin'){const info=document.createElement('p');info.textContent='Gerencie os casos, senhas e subpastas pelos cartões de Casos.';submenu.append(info);}
+    if(key==='admin'){const entry=document.createElement('button');entry.type='button';entry.textContent='Gerenciar usuários';entry.onclick=()=>{closeStartMenu();window.openBackendUsers();};submenu.append(entry);}
     submenu.hidden=!opening;button.setAttribute('aria-expanded',String(opening));
   };
   group.append(button,submenu);startNav.append(group);
@@ -350,13 +354,14 @@ startButton.addEventListener('click',()=>{
   const opening=startMenu.hidden;
   startMenu.hidden=!opening;startButton.setAttribute('aria-expanded',String(opening));
   startMenu.querySelector('.start-profile-name').textContent=activeProfile || 'Investigador';
-  startMenu.querySelectorAll('[data-admin-only]').forEach(group => { group.hidden = activeProfile.toLowerCase() !== 'sakai'; });
+  startMenu.querySelectorAll('[data-admin-only]').forEach(group => { group.hidden = BHBackend.enabled?BHBackend.user?.role!=='admin':activeProfile.toLowerCase() !== 'sakai'; });
   const photo=startMenu.querySelector('.start-profile-avatar');photo.replaceChildren();
   photo.append(avatarButton.firstElementChild.cloneNode(true));
 });
 document.addEventListener('pointerdown',event=>{if(!startMenu.contains(event.target)&&!startButton.contains(event.target))closeStartMenu();});
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!startMenu.hidden){closeStartMenu();startButton.focus();}});
 startMenu.querySelector('.start-power').onclick=()=>{
+  if(BHBackend.enabled)BHBackend.logout().catch(()=>{});
   closeStartMenu();document.dispatchEvent(new CustomEvent('blackhearts-lock'));desktop.classList.remove('ready');desktop.setAttribute('aria-hidden','true');boot.classList.remove('done','loading');startupLoading.setAttribute('aria-hidden','true');passwordInput.value='';passwordInput.focus();
 };
 document.querySelector('#desktop-clock-slot').append(document.querySelector('#clock'));

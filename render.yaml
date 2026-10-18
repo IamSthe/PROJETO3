@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: blackhearts-backend
+    runtime: docker
+    dockerfilePath: ./server/Dockerfile
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: FRONTEND_ORIGIN
+        value: https://iamsthe.github.io
+      - key: DATABASE_PATH
+        value: /data/blackhearts.sqlite
+    disk:
+      name: blackhearts-data
+      mountPath: /data
+      sizeGB: 1
