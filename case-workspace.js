@@ -30,7 +30,7 @@
       input.value=input.value.trimEnd()+entry;input.focus();input.setSelectionRange(input.value.length,input.value.length);input.scrollTop=input.scrollHeight;evidenceNotepad.querySelector('[role="status"]').textContent='Nova linha adicionada. Clique em Salvar para guardar.';
     };
     function openEvidenceNotepad(){evidenceNotepad.querySelector('textarea').value=current.evidenceNotes||'EV-001 — ';evidenceNotepad.querySelector('[role="status"]').textContent='';if(!evidenceNotepad.open)evidenceNotepad.showModal();const input=evidenceNotepad.querySelector('textarea');input.focus();input.setSelectionRange(input.value.length,input.value.length);}
-    let linking=false,linkSource=null,suppressClick=false,handMode=false,pan=null,viewportTimer;
+    let linking=false,linkSource=null,suppressClick=false,handMode=false,pan=null,viewportTimer,viewOnly=false;
     let viewport={left:current.boardViewport?.left||0,top:current.boardViewport?.top||0};
     zoom=current.boardViewport?.zoom||1;
     const relationships=['Conhece','Lidera','Frequenta','Investiga','Utiliza','Associado','Parentesco','Sem parentesco','Personalizado'];
@@ -125,6 +125,9 @@
     // Intercept connection editing and the two-card linking mode.
     host.addEventListener('click',event=>{
       const control=event.target.closest('button');
+      if(control?.dataset.iw==='view-mode'){event.stopImmediatePropagation();viewOnly=!viewOnly;if(viewOnly){linking=false;linkSource=null;}updateViewMode();updateLinkMode();return;}
+      const editActions=['new-element','edit-element','delete-element','link','new-folder','edit-folder','edit-case','new-evidence'];
+      if(viewOnly&&(event.target.closest('[data-connection]')||editActions.includes(control?.dataset.iw)||control?.dataset.editEvidence||control?.dataset.deleteEvidence)){event.stopImmediatePropagation();showToast('Modo Visualização ativo. Desative-o para editar.');return;}
       if(control?.dataset.defaultFolder==='Evidências'||control?.dataset.iw==='evidence'){event.stopImmediatePropagation();openEvidenceNotepad();return;}
       if(control?.dataset.iw==='new-evidence'){event.stopImmediatePropagation();editElement(null,'evidence');return;}
       if(control?.dataset.editEvidence){event.stopImmediatePropagation();editElement(control.dataset.editEvidence);return;}
@@ -138,6 +141,7 @@
     host.addEventListener('click',event=>{
       const button=event.target.closest('button');if(!button)return;
       // These controls are owned by the case workspace, not the previous case screen.
+      if(['hand','center','zoom-in','zoom-out'].includes(button.dataset.iw))return;
       event.stopImmediatePropagation();
       if(button.dataset.node){selected=button.dataset.node;draw();return;}
       if(button.dataset.view){view=button.dataset.view;activeFolder=null;draw();return;}
@@ -167,6 +171,14 @@
       host.querySelector('.iw-link-instruction')?.remove();
       if(linking){const hint=document.createElement('div');hint.className='iw-link-instruction';hint.setAttribute('role','status');hint.textContent=linkSource?'Agora clique no segundo cartão para escolher a relação.':'Clique no primeiro cartão que deseja vincular.';host.querySelector('.iw-board-heading')?.after(hint);}
     }
+    function updateViewMode(){
+      host.querySelector('.iw-workspace')?.classList.toggle('iw-view-only',viewOnly);
+      host.querySelector('[data-iw="view-mode"]')?.setAttribute('aria-pressed',String(viewOnly));
+      evidenceNotepad.querySelector('textarea').readOnly=viewOnly;
+      evidenceNotepad.querySelector('[type="submit"]').disabled=viewOnly;addEvidenceLine.disabled=viewOnly;
+    }
+    host.addEventListener('pointerdown',event=>{if(viewOnly&&event.button===0&&!handMode&&event.target.closest('.iw-node'))event.stopImmediatePropagation();},{capture:true,signal:controller.signal});
+    host.addEventListener('keydown',event=>{if(viewOnly&&event.target.closest('[data-connection]')&&(event.key==='Enter'||event.key===' ')){event.preventDefault();event.stopImmediatePropagation();}},{capture:true,signal:controller.signal});
     let drag;
     host.addEventListener('pointerdown',event=>{if(event.button!==0||linking)return;const node=event.target.closest('.iw-node');const board=host.querySelector('.iw-board');if(!node||!board)return;const item=elements().find(row=>row.id===node.dataset.node),scroll=board.parentElement;drag={id:item.id,startX:event.clientX,startY:event.clientY,x:item.x||0,y:item.y||0,node,board,left:scroll.scrollLeft,top:scroll.scrollTop,moved:false};node.setPointerCapture(event.pointerId);node.classList.add('dragging');},{signal:controller.signal});
     host.addEventListener('pointermove',event=>{if(!drag)return;const scroll=drag.board.parentElement;const x=Math.max(0,Math.min(drag.board.offsetWidth-drag.node.offsetWidth,drag.x+(event.clientX-drag.startX+scroll.scrollLeft-drag.left)/zoom)),y=Math.max(0,Math.min(drag.board.offsetHeight-drag.node.offsetHeight,drag.y+(event.clientY-drag.startY+scroll.scrollTop-drag.top)/zoom));drag.newX=x;drag.newY=y;drag.moved ||= Math.abs(x-drag.x)+Math.abs(y-drag.y)>3;drag.node.style.left=x+'px';drag.node.style.top=y+'px';refreshConnections();},{signal:controller.signal});
@@ -177,7 +189,8 @@
     function addEvidenceShortcut(){const heading=host.querySelector('.iw-board-heading');if(heading&&!heading.querySelector('[data-iw="evidence"]')){const button=document.createElement('button');button.type='button';button.dataset.iw='evidence';button.textContent='▤ Evidências';heading.append(button);}}
     function prepareBoard(){const board=host.querySelector('.iw-board'),scroll=board?.parentElement;if(board){board.style.width=Math.max(2400,board.offsetWidth)+'px';board.style.height=Math.max(1600,board.offsetHeight)+'px';scroll.scrollLeft=viewport.left;scroll.scrollTop=viewport.top;scroll.classList.toggle('hand-mode',handMode);}const toolbar=host.querySelector('.iw-board-heading>div');if(toolbar&&!toolbar.querySelector('[data-iw="hand"]')){for(const [action,title,label] of [['hand','Ferramenta Mão','✋'],['center','Centralizar quadro','⊙']]){const button=document.createElement('button');button.type='button';button.dataset.iw=action;button.title=title;button.setAttribute('aria-label',title);button.textContent=label;if(action==='hand')button.setAttribute('aria-pressed',String(handMode));toolbar.append(button);}}}
     function removeFolderMenu(){host.querySelectorAll('.iw-sidebar>section').forEach(section=>{if(section.querySelector('h3')?.textContent.trim()==='PASTAS DO CASO')section.remove();});const photo=host.querySelector('.iw-detail-card>img');if(photo){photo.tabIndex=0;photo.setAttribute('role','button');photo.setAttribute('aria-label','Ampliar imagem de '+(elements().find(row=>row.id===selected)?.name||'elemento'));photo.title='Clique para ampliar';}}
-    const observer=new MutationObserver(()=>{removeFolderMenu();prepareBoard();refreshConnections();addEvidenceShortcut();updateLinkMode();});observer.observe(host,{childList:true});
+    function prepareViewButton(){const toolbar=host.querySelector('.iw-board-heading>div');if(!toolbar)return;let center=toolbar.querySelector('[data-iw="center"]');if(center)center.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5m6 0h5v5m0 6v5h-5M9 20H4v-5"/><circle cx="12" cy="12" r="3"/></svg>';const hand=toolbar.querySelector('[data-iw="hand"]');if(hand)hand.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12V6a1.5 1.5 0 0 1 3 0v5-7a1.5 1.5 0 0 1 3 0v7-5a1.5 1.5 0 0 1 3 0v6-3a1.5 1.5 0 0 1 3 0v6c0 5-3 7-7 7-3 0-5-2-7-5l-2-3a1.5 1.5 0 0 1 2-2l2 2"/></svg>';if(!toolbar.querySelector('[data-iw="view-mode"]')){const button=document.createElement('button');button.type='button';button.dataset.iw='view-mode';button.title='Modo Visualização — bloquear edição';button.setAttribute('aria-label','Modo Visualização');button.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';toolbar.insertBefore(button,center);}updateViewMode();}
+    const observer=new MutationObserver(()=>{removeFolderMenu();prepareBoard();prepareViewButton();refreshConnections();addEvidenceShortcut();updateLinkMode();});observer.observe(host,{childList:true});
     const resizeObserver=new ResizeObserver(refreshConnections);resizeObserver.observe(host);
     host.addEventListener('load',refreshConnections,{capture:true,signal:controller.signal});
     dispose=()=>{clearTimeout(viewportTimer);controller.abort();observer.disconnect();resizeObserver.disconnect();dialog.remove();imageViewer.remove();evidenceNotepad.remove();};draw();removeFolderMenu();prepareBoard();refreshConnections();
