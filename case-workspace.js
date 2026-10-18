@@ -16,6 +16,12 @@
     host.addEventListener('click',event=>{if(!event.target.matches('.iw-detail-card>img'))return;event.stopImmediatePropagation();openElementPhoto();},{capture:true,signal:controller.signal});
     host.addEventListener('keydown',event=>{if(event.target.matches('.iw-detail-card>img')&&(event.key==='Enter'||event.key===' ')){event.preventDefault();openElementPhoto();}},{capture:true,signal:controller.signal});
     const elements=()=>current.elements||[];
+    const evidenceNotepad=document.createElement('dialog');evidenceNotepad.className='iw-evidence-notepad';evidenceNotepad.setAttribute('aria-label','Bloco de notas de evidências');
+    evidenceNotepad.innerHTML='<header><strong>▤ &nbsp; EVIDENCIAS</strong><button type="button" data-close-notepad aria-label="Fechar bloco de notas">×</button></header><form><h2>EVIDENCIAS</h2><textarea aria-label="Informações rápidas das evidências" placeholder="Escreva informações rápidas sobre as evidências…" maxlength="20000"></textarea><p role="status"></p><footer><button type="button" data-evidence-records>Ver evidências cadastradas</button><button type="submit">Salvar</button></footer></form>';document.body.append(evidenceNotepad);
+    evidenceNotepad.querySelector('[data-close-notepad]').onclick=()=>evidenceNotepad.close();
+    evidenceNotepad.querySelector('[data-evidence-records]').onclick=()=>{evidenceNotepad.close();view='evidence';activeFolder=null;draw();};
+    evidenceNotepad.querySelector('form').onsubmit=event=>{event.preventDefault();const next=structuredClone(current);next.evidenceNotes=evidenceNotepad.querySelector('textarea').value;if(commit(next))evidenceNotepad.querySelector('[role="status"]').textContent='Informações salvas.';};
+    function openEvidenceNotepad(){evidenceNotepad.querySelector('textarea').value=current.evidenceNotes||'';evidenceNotepad.querySelector('[role="status"]').textContent='';if(!evidenceNotepad.open)evidenceNotepad.showModal();evidenceNotepad.querySelector('textarea').focus();}
     let linking=false,linkSource=null,suppressClick=false,handMode=false,pan=null,viewportTimer;
     let viewport={left:current.boardViewport?.left||0,top:current.boardViewport?.top||0};
     zoom=current.boardViewport?.zoom||1;
@@ -107,7 +113,7 @@
     // Intercept connection editing and the two-card linking mode.
     host.addEventListener('click',event=>{
       const control=event.target.closest('button');
-      if(control?.dataset.defaultFolder==='Evidências'||control?.dataset.iw==='evidence'){event.stopImmediatePropagation();activeFolder=null;view='evidence';draw();return;}
+      if(control?.dataset.defaultFolder==='Evidências'||control?.dataset.iw==='evidence'){event.stopImmediatePropagation();openEvidenceNotepad();return;}
       if(control?.dataset.iw==='new-evidence'){event.stopImmediatePropagation();editElement(null,'evidence');return;}
       if(control?.dataset.editEvidence){event.stopImmediatePropagation();editElement(control.dataset.editEvidence);return;}
       if(control?.dataset.viewEvidence){event.stopImmediatePropagation();selected=control.dataset.viewEvidence;view='board';activeFolder=null;draw();return;}
@@ -162,6 +168,6 @@
     const observer=new MutationObserver(()=>{removeFolderMenu();prepareBoard();refreshConnections();addEvidenceShortcut();updateLinkMode();});observer.observe(host,{childList:true});
     const resizeObserver=new ResizeObserver(refreshConnections);resizeObserver.observe(host);
     host.addEventListener('load',refreshConnections,{capture:true,signal:controller.signal});
-    dispose=()=>{clearTimeout(viewportTimer);controller.abort();observer.disconnect();resizeObserver.disconnect();dialog.remove();imageViewer.remove();};draw();removeFolderMenu();prepareBoard();refreshConnections();
+    dispose=()=>{clearTimeout(viewportTimer);controller.abort();observer.disconnect();resizeObserver.disconnect();dialog.remove();imageViewer.remove();evidenceNotepad.remove();};draw();removeFolderMenu();prepareBoard();refreshConnections();
   };
 })();
