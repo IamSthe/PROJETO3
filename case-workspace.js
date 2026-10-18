@@ -60,6 +60,10 @@
     function refreshConnections(){
       applyWorkspaceFactionColor(host,current);
       const board=host.querySelector('.iw-board'),svg=board?.querySelector('.iw-links');if(!svg)return;
+      // Keep room around every card, including tall notes and cards near the edge.
+      const visibleCards=[...board.querySelectorAll('.iw-node')];
+      board.style.width=Math.max(2400,board.offsetWidth,...visibleCards.map(node=>(parseFloat(node.style.left)||0)+node.offsetWidth+120))+'px';
+      board.style.height=Math.max(1600,board.offsetHeight,...visibleCards.map(node=>(parseFloat(node.style.top)||0)+node.offsetHeight+120))+'px';
       const zoomLabel=host.querySelector('.iw-board-heading>div>span');if(zoomLabel)zoomLabel.textContent=Math.round(zoom*100)+'%';
       const boxes=new Map([...board.querySelectorAll('.iw-node')].map(node=>[node.dataset.node,{x:parseFloat(node.style.left)||0,y:parseFloat(node.style.top)||0,w:node.offsetWidth,h:node.offsetHeight}]));
       svg.innerHTML=(current.links||[]).map(link=>{
