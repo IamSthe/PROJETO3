@@ -280,7 +280,10 @@
   }
   win.querySelector('.close').addEventListener('click', resetCasesMenu);
   document.querySelectorAll('.desktop-icon[data-open="case"]').forEach(icon => {
-    icon.addEventListener('click', resetCasesMenu, {capture:true});
+    icon.addEventListener('click', () => {
+      resetCasesMenu();
+      if (!win.classList.contains('maximized')) win.querySelector('.maximize').click();
+    }, {capture:true});
   });
   render();syncTasks();
 })();
