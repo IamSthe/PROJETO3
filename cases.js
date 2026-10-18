@@ -206,7 +206,7 @@
     quickNotesDialog.querySelectorAll('[data-remove-note]').forEach(button=>button.onclick=()=>{if(!isCaseAdmin()||!confirm('Excluir este recado?'))return;try{localStorage.setItem('bh-case-quick-notes',JSON.stringify(readCaseNotes().filter(note=>note.id!==button.dataset.removeNote)));openQuickNotes();}catch{quickNotesDialog.querySelector('.quick-note-error').textContent='Não foi possível excluir o recado.';}});
     if(!quickNotesDialog.open)quickNotesDialog.showModal();
   }
-  new MutationObserver(()=>{addDeleteButtons();addPasswordButtons();alignCaseActions();addClassificationFilter();updateCaseDescriptions();addCasePhotos();enhanceSearchTools();addInvestigationSubfolder();}).observe(content, {childList:true});
+  new MutationObserver(()=>{addDeleteButtons();addPasswordButtons();alignCaseActions();addClassificationFilter();updateCaseDescriptions();addCasePhotos();enhanceSearchTools();addInvestigationSubfolder();applyCaseFactionColors(content,cases);}).observe(content, {childList:true});
   // The desktop is rendered before login; refresh admin actions once the user is known.
   new MutationObserver(() => render()).observe(document.querySelector('#taskbar-username'), {childList:true,characterData:true,subtree:true});
   const editor=document.createElement('dialog'); editor.className='rename-icon-dialog case-editor'; document.body.append(editor);
@@ -235,6 +235,7 @@
       const classificationFields=document.createElement('fieldset');classificationFields.className='case-choice-fields';classificationFields.innerHTML=`<legend>CLASSIFICAÇÃO</legend>${[['legal','⚖ LEGAL'],['illegal','☠ ILEGAL']].map(([value,label])=>`<label><input type="radio" name="classification" value="${value}" ${(item?.classification||'legal')===value?'checked':''}><span>${label}</span></label>`).join('')}`;statusLabel.before(classificationFields);
       const statusFields=document.createElement('fieldset');statusFields.className='case-choice-fields';statusFields.innerHTML=`<legend>STATUS</legend>${[['active','Ativo'],['priority','Prioridade'],['archived','Arquivado'],['closed','Encerrado']].map(([value,label])=>`<label><input type="radio" name="status" value="${value}" ${(item?.status||'active')===value?'checked':''}><span><i class="status-choice-dot" data-status="${value}"></i> ${label}</span></label>`).join('')}`;statusLabel.replaceWith(statusFields);
       if(isCaseAdmin()){const passwordLabel=document.createElement('label');passwordLabel.textContent='SENHA DE ACESSO (OPCIONAL)';const input=document.createElement('input');input.type='password';input.name='casePassword';input.minLength=4;input.maxLength=128;input.autocomplete='new-password';input.placeholder=item?.passwordHash?'Deixe vazio para manter a senha':'Deixe vazio para acesso livre';passwordLabel.append(input);statusFields.after(passwordLabel);}
+      mountFactionEditor(editor,item);
     } else editor.classList.remove('case-designation-editor');
     editor.querySelector('[data-cancel]').onclick=()=>editor.close();
     editor.querySelector('form').onsubmit=async event=>{
@@ -254,6 +255,7 @@
       if(type==='case'){const values={name,description:String(fields.get('description')),status:fields.get('status'),classification:fields.get('classification')};const password=fields.get('casePassword');if(password&&isCaseAdmin()){try{values.passwordSalt=crypto.randomUUID();values.passwordHash=await passwordDigest(password,values.passwordSalt);}catch{editor.querySelector('p').textContent='Não foi possível salvar a senha.';return;}}if(item)Object.assign(next.find(row=>row.id===item.id),values);else next.push({...values,id:crypto.randomUUID(),code:'OPS · '+Date.now().toString(16).slice(-6).toUpperCase(),folders:[]});}
       else {const parent=next.find(row=>row.id===active),values={name,notes:String(fields.get('description'))};if(sub)Object.assign(parent.folders.find(row=>row.id===sub.id),values);else parent.folders.push({...values,id:crypto.randomUUID()});}
       if(uploadedPhoto){const target=item?next.find(row=>row.id===item.id):next[next.length-1];target.photo=uploadedPhoto;}
+      if(type==='case'){const target=item?next.find(row=>row.id===item.id):next[next.length-1];target.factionColor=caseFactionColor(fields.get('factionColor'));}
       else if(type==='case'&&removePhoto&&item){delete next.find(row=>row.id===item.id).photo;}
       try{persist(next);editor.close();render();}catch{editor.querySelector('p').textContent='Não foi possível salvar neste navegador. O armazenamento pode estar cheio.';}
     };editor.showModal();

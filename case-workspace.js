@@ -25,6 +25,7 @@
       const remove=dialog.querySelector('[data-delete-link]');if(remove)remove.onclick=()=>{const next=structuredClone(current);next.links=next.links.filter(row=>row.id!==id);if(commit(next)){dialog.close();draw();}};
     }
     function refreshConnections(){
+      applyWorkspaceFactionColor(host,current);
       const board=host.querySelector('.iw-board'),svg=board?.querySelector('.iw-links');if(!svg)return;
       const zoomLabel=host.querySelector('.iw-board-heading>div>span');if(zoomLabel)zoomLabel.textContent=Math.round(zoom*100)+'%';
       const boxes=new Map([...board.querySelectorAll('.iw-node')].map(node=>[node.dataset.node,{x:parseFloat(node.style.left)||0,y:parseFloat(node.style.top)||0,w:node.offsetWidth,h:node.offsetHeight}]));
