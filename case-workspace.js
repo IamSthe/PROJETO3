@@ -13,7 +13,7 @@
     let linking=false,linkSource=null,suppressClick=false,handMode=false,pan=null,viewportTimer;
     let viewport={left:current.boardViewport?.left||0,top:current.boardViewport?.top||0};
     zoom=current.boardViewport?.zoom||1;
-    const relationships=['Conhece','Lidera','Frequenta','Investiga','Utiliza','Associado','Personalizado'];
+    const relationships=['Conhece','Lidera','Frequenta','Investiga','Utiliza','Associado','Parentesco','Sem parentesco','Personalizado'];
     function editLink(from,to,id){
       const old=(current.links||[]).find(row=>row.id===id);
       const custom=old&&!relationships.includes(old.label);
