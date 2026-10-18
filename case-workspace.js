@@ -17,10 +17,10 @@
     function editLink(from,to,id){
       const old=(current.links||[]).find(row=>row.id===id);
       const custom=old&&!relationships.includes(old.label);
-      form(old?'Editar vínculo':'Tipo de relação',`<label>Relação<select name="relation">${relationships.map(name=>`<option ${old&&(custom?name==='Personalizado':name===old.label)?'selected':''}>${name}</option>`).join('')}</select></label><label>Relação personalizada<input name="custom" maxlength="80" value="${esc(custom?old.label:'')}"></label>${old?'<button type="button" data-delete-link>Excluir vínculo</button>':''}`,fields=>{
-        const label=fields.get('relation')==='Personalizado'?String(fields.get('custom')).trim():fields.get('relation');if(!label)throw Error('Informe a relação personalizada.');
+      form(old?'Editar vínculo':'Tipo de relação',`<label>Relação<select name="relation">${relationships.map(name=>`<option ${old&&(old.relationType?name===old.relationType:custom?name==='Personalizado':name===old.label)?'selected':''}>${name}</option>`).join('')}</select></label><label>Texto exibido na linha<textarea name="custom" maxlength="160" placeholder="Ex.: São irmãs, prima de Shirley, não possui parentesco…">${esc(custom?old.label:'')}</textarea></label><p>Se escrever um texto, ele aparecerá na linha no lugar da opção acima.</p>${old?'<button type="button" data-delete-link>Excluir vínculo</button>':''}`,fields=>{
+        const label=String(fields.get('custom')||'').trim()||(fields.get('relation')==='Personalizado'?'':fields.get('relation'));if(!label)throw Error('Escreva o texto que deseja mostrar na linha.');
         const next=structuredClone(current);next.links ||= [];
-        if(old)Object.assign(next.links.find(row=>row.id===id),{label});else next.links.push({id:crypto.randomUUID(),from,to,label});
+        if(old)Object.assign(next.links.find(row=>row.id===id),{label,relationType:fields.get('relation')});else next.links.push({id:crypto.randomUUID(),from,to,label,relationType:fields.get('relation')});
         linking=false;linkSource=null;return commit(next);
       });
       const remove=dialog.querySelector('[data-delete-link]');if(remove)remove.onclick=()=>{const next=structuredClone(current);next.links=next.links.filter(row=>row.id!==id);if(commit(next)){dialog.close();draw();}};
@@ -31,7 +31,7 @@
       const options=elements().map(row=>`<option value="${esc(row.id)}">${esc(row.name)}</option>`).join('');
       form('Vincular elementos',`<label>Primeiro elemento<select name="from">${options}</select></label><label>Segundo elemento<select name="to">${options}</select></label><label>Tipo de relação<select name="relation">${relationships.map(name=>`<option>${name}</option>`).join('')}</select></label><label>Relação personalizada<input name="custom" maxlength="80" placeholder="Preencha ao escolher Personalizado"></label><button type="button" data-pick-on-board>Selecionar cartões no quadro</button>`,fields=>{
         const from=fields.get('from'),to=fields.get('to');if(from===to)throw Error('Escolha dois elementos diferentes.');
-        const label=fields.get('relation')==='Personalizado'?String(fields.get('custom')).trim():fields.get('relation');if(!label)throw Error('Informe a relação personalizada.');
+        const label=String(fields.get('custom')||'').trim()||(fields.get('relation')==='Personalizado'?'':fields.get('relation'));if(!label)throw Error('Informe a relação personalizada.');
         const next=structuredClone(current);next.links ||= [];next.links.push({id:crypto.randomUUID(),from,to,label});return commit(next);
       });
       dialog.querySelector('[name="to"]').selectedIndex=1;
