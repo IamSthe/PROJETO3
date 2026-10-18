@@ -57,7 +57,7 @@
       return;
     }
     if (record) {
-      content.innerHTML = `<button class="case-back" data-back>← ${sub?escape(record.name):'Todos os casos'}</button><div class="cases-heading"><div><h2>${escape(sub?.name || record.name)}</h2><p>${escape(sub?'Subpasta de '+record.name:record.description)}</p></div><button data-edit="${sub?'folder':'case'}">Editar</button></div>${sub?`<div class="case-notes">${escape(sub.notes || 'Nenhuma observação cadastrada.')}</div>`:`<button data-new-folder>＋ Nova subpasta</button><div class="cases-grid">${record.folders.map(item=>`<button class="case-folder" data-folder="${item.id}">${desktopSymbol('folder')}<strong>${escape(item.name)}</strong></button>`).join('') || '<p class="cases-empty">Crie subpastas para organizar este caso.</p>'}</div>`}`;
+      content.innerHTML = `<button class="case-back" data-back>← Todos os casos</button><div class="cases-heading"><div><h2>${escape(record.name)}</h2><p>${escape(record.description||'')}</p></div><button data-edit="case">Editar</button></div><div class="cases-grid"></div>`;
       return;
     }
     const terms=normalizeSearch(query).trim().split(/\s+/).filter(Boolean);
