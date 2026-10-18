@@ -9,6 +9,12 @@
     dispose();
     const controller=new AbortController();let current=structuredClone(source),selected=null,view='board',activeFolder=null,zoom=1,search='';
     const dialog=document.createElement('dialog');dialog.className='iw-editor rename-icon-dialog';document.body.append(dialog);
+    const imageViewer=document.createElement('dialog');imageViewer.className='iw-image-viewer';imageViewer.setAttribute('aria-label','Visualização da imagem');imageViewer.innerHTML='<button type="button" aria-label="Fechar imagem">×</button><img alt=""><p></p>';document.body.append(imageViewer);
+    imageViewer.querySelector('button').onclick=()=>imageViewer.close();
+    imageViewer.addEventListener('click',event=>{if(event.target!==imageViewer)return;const rect=imageViewer.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)imageViewer.close();});
+    function openElementPhoto(){const item=elements().find(row=>row.id===selected);if(!item?.photo)return;const image=imageViewer.querySelector('img');image.src=item.photo;image.alt=item.name;imageViewer.querySelector('p').textContent=item.name;imageViewer.showModal();}
+    host.addEventListener('click',event=>{if(!event.target.matches('.iw-detail-card>img'))return;event.stopImmediatePropagation();openElementPhoto();},{capture:true,signal:controller.signal});
+    host.addEventListener('keydown',event=>{if(event.target.matches('.iw-detail-card>img')&&(event.key==='Enter'||event.key===' ')){event.preventDefault();openElementPhoto();}},{capture:true,signal:controller.signal});
     const elements=()=>current.elements||[];
     let linking=false,linkSource=null,suppressClick=false,handMode=false,pan=null,viewportTimer;
     let viewport={left:current.boardViewport?.left||0,top:current.boardViewport?.top||0};
@@ -152,10 +158,10 @@
     host.addEventListener('keydown',event=>{const group=event.target.closest('[data-connection]');if(group&&(event.key==='Enter'||event.key===' ')){event.preventDefault();const link=current.links.find(row=>row.id===group.dataset.connection);editLink(link.from,link.to,link.id);}if(event.key==='Escape'){linking=false;linkSource=null;host.querySelector('.iw-board')?.classList.remove('is-linking');host.querySelectorAll('.link-source').forEach(node=>node.classList.remove('link-source'));}},{signal:controller.signal});
     function addEvidenceShortcut(){const heading=host.querySelector('.iw-board-heading');if(heading&&!heading.querySelector('[data-iw="evidence"]')){const button=document.createElement('button');button.type='button';button.dataset.iw='evidence';button.textContent='▤ Evidências';heading.append(button);}}
     function prepareBoard(){const board=host.querySelector('.iw-board'),scroll=board?.parentElement;if(board){board.style.width=Math.max(2400,board.offsetWidth)+'px';board.style.height=Math.max(1600,board.offsetHeight)+'px';scroll.scrollLeft=viewport.left;scroll.scrollTop=viewport.top;scroll.classList.toggle('hand-mode',handMode);}const toolbar=host.querySelector('.iw-board-heading>div');if(toolbar&&!toolbar.querySelector('[data-iw="hand"]')){for(const [action,title,label] of [['hand','Ferramenta Mão','✋'],['center','Centralizar quadro','⊙']]){const button=document.createElement('button');button.type='button';button.dataset.iw=action;button.title=title;button.setAttribute('aria-label',title);button.textContent=label;if(action==='hand')button.setAttribute('aria-pressed',String(handMode));toolbar.append(button);}}}
-    function removeFolderMenu(){host.querySelectorAll('.iw-sidebar>section').forEach(section=>{if(section.querySelector('h3')?.textContent.trim()==='PASTAS DO CASO')section.remove();});}
+    function removeFolderMenu(){host.querySelectorAll('.iw-sidebar>section').forEach(section=>{if(section.querySelector('h3')?.textContent.trim()==='PASTAS DO CASO')section.remove();});const photo=host.querySelector('.iw-detail-card>img');if(photo){photo.tabIndex=0;photo.setAttribute('role','button');photo.setAttribute('aria-label','Ampliar imagem de '+(elements().find(row=>row.id===selected)?.name||'elemento'));photo.title='Clique para ampliar';}}
     const observer=new MutationObserver(()=>{removeFolderMenu();prepareBoard();refreshConnections();addEvidenceShortcut();updateLinkMode();});observer.observe(host,{childList:true});
     const resizeObserver=new ResizeObserver(refreshConnections);resizeObserver.observe(host);
     host.addEventListener('load',refreshConnections,{capture:true,signal:controller.signal});
-    dispose=()=>{clearTimeout(viewportTimer);controller.abort();observer.disconnect();resizeObserver.disconnect();dialog.remove();};draw();removeFolderMenu();prepareBoard();refreshConnections();
+    dispose=()=>{clearTimeout(viewportTimer);controller.abort();observer.disconnect();resizeObserver.disconnect();dialog.remove();imageViewer.remove();};draw();removeFolderMenu();prepareBoard();refreshConnections();
   };
 })();
