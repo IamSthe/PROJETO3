@@ -38,4 +38,12 @@ As tentativas online são gravadas em `access_audit` no SQLite, incluindo usuár
 
 ## Verificação
 
+## Migração do navegador local para o Pages
+
+Abra **Iniciar → Backup e migração** (também disponível no menu principal BlackHearts). No endereço local onde os dados existem, use **Exportar todos os dados**. No Pages, importe o JSON pela mesma tela, revise o resumo e confirme. A tela baixa um backup de segurança do destino antes de importar e pede para recarregar ao concluir.
+
+O backup inclui casos completos (com elementos, vínculos, posições e fotos incorporadas), pastas BlackHearts, textos do arquivo histórico, fotos originais da Família no IndexedDB, notas e nomes personalizados. Credenciais de login e tokens de sessão são excluídos. O JSON é privado: não o publique no repositório. A importação substitui apenas chaves/identificadores presentes no arquivo; fotos extras no destino são preservadas. Arquivos inválidos são recusados, e falhas de gravação restauram o armazenamento local anterior. A migração não sincroniza navegadores nem outros usuários. Um backend conectado exige migração própria; a ferramenta bloqueia a restauração enquanto uma sessão de backend estiver ativa.
+
+## Testes
+
 `npm test` testa login, permissões, leitura compartilhada, conflitos, logout, autorização do diretório e auditoria em um banco temporário.
