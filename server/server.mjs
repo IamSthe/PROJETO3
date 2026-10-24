@@ -1,7 +1,7 @@
 import http from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes,scryptSync,timingSafeEqual,createHash } from 'node:crypto';
-import { mkdirSync,readFileSync,existsSync } from 'node:fs';
+import { mkdirSync,readFileSync,existsSync,statSync,createReadStream } from 'node:fs';
 import { resolve,dirname,extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
@@ -10,6 +10,8 @@ const db=new DatabaseSync(database);db.exec(`PRAGMA journal_mode=WAL;PRAGMA fore
 CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,username TEXT UNIQUE COLLATE NOCASE,password TEXT NOT NULL,role TEXT NOT NULL,active INTEGER NOT NULL DEFAULT 1);
 CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),expires INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS state(id INTEGER PRIMARY KEY CHECK(id=1),revision INTEGER NOT NULL,data TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS directory_permissions(user_id TEXT NOT NULL REFERENCES users(id),directory TEXT NOT NULL,allowed INTEGER NOT NULL,PRIMARY KEY(user_id,directory));
+CREATE TABLE IF NOT EXISTS access_audit(id INTEGER PRIMARY KEY,user_id TEXT,username TEXT,occurred_at TEXT NOT NULL,directory TEXT NOT NULL,action TEXT NOT NULL,result TEXT NOT NULL);
 INSERT OR IGNORE INTO state VALUES(1,0,'[]');`);
 const digest=value=>createHash('sha256').update(value).digest('hex');
 function passwordHash(password){const salt=randomBytes(16).toString('hex');return salt+':'+scryptSync(password,salt,64).toString('hex');}
@@ -24,6 +26,8 @@ function fail(status,message){const error=Error(message);error.status=status;thr
 async function body(req){let size=0,chunks=[];for await(const chunk of req){size+=chunk.length;if(size>15*1024*1024)fail(413,'Dados grandes demais.');chunks.push(chunk);}try{return JSON.parse(Buffer.concat(chunks).toString()||'{}');}catch{fail(400,'JSON inválido.');}}
 function userFor(req){const token=req.headers.authorization?.replace(/^Bearer /,'');if(!token)fail(401,'Faça login.');const row=db.prepare('SELECT users.* FROM sessions JOIN users ON users.id=sessions.user_id WHERE sessions.token=? AND expires>? AND users.active=1').get(digest(token),Date.now());if(!row)fail(401,'Sessão expirada.');return row;}
 function admin(user){if(user.role!=='admin')fail(403,'Somente administradores.');}
+function directoryAllowed(user){const permission=db.prepare('SELECT allowed FROM directory_permissions WHERE user_id=? AND directory=?').get(user.id,'blackhearts');return permission?permission.allowed===1:['admin','investigator'].includes(user.role);}
+function auditDirectory(user,action,result){db.prepare('INSERT INTO access_audit(user_id,username,occurred_at,directory,action,result) VALUES(?,?,?,?,?,?)').run(user?.id||null,user?.username||null,new Date().toISOString(),'blackhearts',action,result);}
 const server=http.createServer(async(req,res)=>{
  const headers={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
  if(req.headers.origin===origin){headers['Access-Control-Allow-Origin']=origin;headers.Vary='Origin';}
@@ -32,6 +36,11 @@ const server=http.createServer(async(req,res)=>{
   const path=new URL(req.url,'http://localhost').pathname;
   if(req.method==='OPTIONS'){res.writeHead(204,{...headers,'Access-Control-Allow-Headers':'Authorization, Content-Type','Access-Control-Allow-Methods':'GET, POST, PUT, OPTIONS'});res.end();return;}
   if(path==='/health')return send(200,{ok:true});
+  if(path==='/api/directories/blackhearts/authorize'&&req.method==='POST'){
+   let user;try{user=userFor(req);}catch(error){auditDirectory(null,'authorize','denied');throw error;}
+   const allowed=directoryAllowed(user);auditDirectory(user,'authorize',allowed?'allowed':'denied');
+   return send(200,{allowed,user:{id:user.id,username:user.username,role:user.role}});
+  }
   if(path==='/api/login'&&req.method==='POST'){
    const input=await body(req),key=req.socket.remoteAddress;let limit=attempts.get(key);if(!limit||limit.until<Date.now()){limit={count:0,until:Date.now()+900000};attempts.set(key,limit);}if(limit.count>=10)fail(429,'Muitas tentativas. Aguarde 15 minutos.');limit.count++;
    if(typeof input.username!=='string'||typeof input.password!=='string'||input.password.length>256)fail(400,'Dados inválidos.');
@@ -39,7 +48,16 @@ const server=http.createServer(async(req,res)=>{
    const token=randomBytes(32).toString('hex');db.prepare('DELETE FROM sessions WHERE expires<?').run(Date.now());db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(digest(token),user.id,Date.now()+8*3600000);return send(200,{token,user:{id:user.id,username:user.username,role:user.role}});
   }
   if(path.startsWith('/api/')){
-   const user=userFor(req);
+   let user;try{user=userFor(req);}catch(error){if(path==='/api/directories/blackhearts/content')auditDirectory(null,'read','denied');throw error;}
+   if(path==='/api/directories/blackhearts/content'&&req.method==='GET'){
+    const allowed=directoryAllowed(user);auditDirectory(user,'read',allowed?'allowed':'denied');if(!allowed)fail(403,'Permissão insuficiente para acessar este diretório.');
+    return send(200,{name:'BlackHearts',entries:[{id:'cases',name:'Casos',kind:'folder'}]});
+   }
+   if(path==='/api/directories/blackhearts/permission'&&req.method==='PUT'){
+    admin(user);const input=await body(req);if(typeof input.allowed!=='boolean'||typeof input.userId!=='string'||!db.prepare('SELECT 1 FROM users WHERE id=?').get(input.userId))fail(400,'Usuário ou permissão inválida.');
+    db.prepare('INSERT INTO directory_permissions VALUES(?,?,?) ON CONFLICT(user_id,directory) DO UPDATE SET allowed=excluded.allowed').run(input.userId,'blackhearts',Number(input.allowed));return send(200,{ok:true});
+   }
+   if(path==='/api/audit/blackhearts'&&req.method==='GET'){admin(user);return send(200,{events:db.prepare('SELECT * FROM access_audit ORDER BY id DESC LIMIT 200').all()});}
    if(path==='/api/me'&&req.method==='GET')return send(200,{user:{id:user.id,username:user.username,role:user.role}});
    if(path==='/api/logout'&&req.method==='POST'){db.prepare('DELETE FROM sessions WHERE token=?').run(digest(req.headers.authorization.slice(7)));return send(200,{ok:true});}
    if(path==='/api/cases'&&req.method==='GET'){const state=db.prepare('SELECT * FROM state WHERE id=1').get();return send(200,{revision:state.revision,cases:JSON.parse(state.data)});}
@@ -55,6 +73,17 @@ const server=http.createServer(async(req,res)=>{
    fail(404,'Rota não encontrada.');
   }
   if(path==='/backend-config.js'){res.writeHead(200,{'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'no-store'});res.end('window.BLACKHEARTS_API_URL=location.origin;');return;}
+  if(/^\/assents\/[a-zA-Z0-9_.-]+\.(mp3|wav|ogg|m4a|aac)$/i.test(path)){
+   const target=resolve(root,path.slice(1));if(!existsSync(target)||!statSync(target).isFile())fail(404,'Áudio não encontrado.');
+   const size=statSync(target).size,type={'.mp3':'audio/mpeg','.wav':'audio/wav','.ogg':'audio/ogg','.m4a':'audio/mp4','.aac':'audio/aac'}[extname(target).toLowerCase()];
+   const mediaHeaders={'Content-Type':type,'Accept-Ranges':'bytes','X-Content-Type-Options':'nosniff'};let start=0,end=size-1,status=200;
+   if(req.headers.range){const match=/^bytes=(\d*)-(\d*)$/.exec(req.headers.range);if(!match||(!match[1]&&!match[2])){res.writeHead(416,{...mediaHeaders,'Content-Range':'bytes */'+size});res.end();return;}
+    if(!match[1])start=Math.max(0,size-Number(match[2]));else{start=Number(match[1]);if(match[2])end=Math.min(end,Number(match[2]));}
+    if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||start>=size||end<start){res.writeHead(416,{...mediaHeaders,'Content-Range':'bytes */'+size});res.end();return;}
+    status=206;mediaHeaders['Content-Range']=`bytes ${start}-${end}/${size}`;
+   }
+   mediaHeaders['Content-Length']=String(end-start+1);res.writeHead(status,mediaHeaders);if(req.method==='HEAD'){res.end();return;}const stream=createReadStream(target,{start,end});stream.on('error',()=>res.destroy());stream.pipe(res);return;
+  }
   const file=path==='/'?'index.html':decodeURIComponent(path).slice(1);if(!/^(index\.html|script\.js|cases\.js|[a-z-]+\.(js|css)|assents\/[a-zA-Z0-9_.-]+)$/.test(file))fail(404,'Arquivo não encontrado.');const target=resolve(root,file);if(!existsSync(target))fail(404,'Arquivo não encontrado.');res.writeHead(200,{'Content-Type':({'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.svg':'image/svg+xml'})[extname(target)]||'application/octet-stream','X-Content-Type-Options':'nosniff'});res.end(readFileSync(target));
  }catch(error){send(error.status||500,{error:error.status?error.message:'Falha interna do servidor.'});}
 });

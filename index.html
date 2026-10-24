@@ -12,6 +12,9 @@
   <link rel="stylesheet" href="board-interactions.css">
   <link rel="stylesheet" href="faction-colors.css">
   <link rel="stylesheet" href="workspace-layout.css">
+  <link rel="stylesheet" href="readability.css?v=familia-20261022-r5">
+  <link rel="stylesheet" href="family-archive.css?v=20261024-audio-fix-24">
+  <link rel="stylesheet" href="typography.css?v=20261024-inter-1">
 </head>
 <body>
   <main class="boot" id="boot" aria-label="Inicialização do Windows">
@@ -72,9 +75,13 @@
       </div>
     </section>
 
-    <section class="window evidence-window" data-window="evidence" aria-label="Evidências">
-      <header class="window-header"><span class="window-app-icon">▤</span><span>Evidências</span><div class="window-controls"><button class="minimize" title="Minimizar">−</button><button class="close" title="Fechar">×</button></div></header>
-      <div class="window-content evidence-content"><h1>Evidências</h1><p>EV-001 — Arma sem identificação.</p><p>EV-002 — Impressão criptografada.</p><p>EV-003 — Fotografia antiga.</p></div>
+    <section class="window blackhearts-folders hidden" data-window="blackhearts" aria-label="BlackHearts">
+      <header class="window-header"><span class="window-app-icon">▰</span><span>BlackHearts</span><div class="window-controls"><button class="minimize" title="Minimizar">−</button><button class="close" title="Fechar">×</button></div></header>
+      <div class="window-content blackhearts-folders-content"></div>
+    </section>
+    <section class="window blackhearts-directory hidden" data-window="database" aria-label="Banco de dados">
+      <header class="window-header"><span class="window-app-icon">▰</span><span>Banco de dados</span><div class="window-controls"><button class="minimize" title="Minimizar">−</button><button class="close" title="Fechar">×</button></div></header>
+      <div class="window-content blackhearts-directory-content"></div>
     </section>
     <div class="toast" id="toast" role="status"></div>
     <footer class="taskbar"><button class="start-button" id="start-button" aria-label="Iniciar"><i></i><i></i><i></i><i></i></button><div class="taskbar-search">⌕ <span>Pesquisar</span></div><div class="taskbar-app active-app">📁</div><div class="tray"><div class="taskbar-user"><span class="taskbar-avatar"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg></span><div><strong id="taskbar-username"></strong><small><i></i>ATIVO</small></div></div><span class="network-group"><span class="wifi-status" title="Conexão online"><i></i><i></i><i></i><i></i></span><span class="online-label"><b></b>ONLINE</span></span><span class="volume-icon" aria-label="Áudio ativo" title="Áudio ativo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z"></path><path d="M16 9.5a4 4 0 0 1 0 5M18.5 7a7.5 7.5 0 0 1 0 10"></path></svg></span><time id="clock"><strong>--:--</strong><small>--/--/----</small></time></div></footer>
@@ -84,10 +91,15 @@
   <script src="backend-users.js"></script>
   <script src="script.js"></script>
   <script src="faction-colors.js"></script>
+  <script src="connection-routing.js"></script>
   <script src="case-workspace.js"></script>
   <script src="report-png.js"></script>
   <script src="board-report.js"></script>
   <script src="cases.js"></script>
   <script src="terminal.js"></script>
+  <script src="directory-security.js"></script>
+  <script src="blackhearts-folders.js?v=familia-audio-fix-20261024"></script>
+  <script src="family-archive.js?v=20261024-credit-22"></script>
+  <script src="family-text-editor.js?v=20261024-texto-vazio-23"></script>
 </body>
 </html>

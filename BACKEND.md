@@ -28,6 +28,14 @@ As senhas opcionais de casos do modo local continuam sendo um bloqueio de interf
 
 Notas rápidas e fotos de perfil ainda são locais. O backend desta etapa compartilha casos, elementos, vínculos, fotos dos casos e posições do quadro.
 
+## Diretório BlackHearts
+
+O ícone BlackHearts (identificador interno `evidence`) usa duplo clique para executar o terminal de segurança. O mecanismo de digitação, cursor e áudio é compartilhado com o terminal de login. Sem backend conectado, a abertura é negada; o modo local não simula autorização.
+
+Usuários ativos com papéis `admin` ou `investigator` recebem acesso por padrão, respeitando uma eventual permissão individual explícita. Administradores podem definir essa permissão via `PUT /api/directories/blackhearts/permission` com `{ "userId": "ID", "allowed": false }` (ou `true`). A autorização é consultada em `POST /api/directories/blackhearts/authorize`; `GET /api/directories/blackhearts/content` verifica a permissão novamente, inclusive se acessado diretamente.
+
+As tentativas online são gravadas em `access_audit` no SQLite, incluindo usuário identificado pela sessão (ou nulo sem sessão válida), horário UTC, diretório, ação e resultado. Administradores consultam os últimos 200 eventos em `GET /api/audit/blackhearts`. Acesso negado ao diretório não altera as permissões já existentes da API de casos. A pasta contém o atalho Casos; o bloco de notas independente permanece removido. Quando o servidor está indisponível, não é possível registrar a tentativa nele e o acesso permanece bloqueado.
+
 ## Verificação
 
-`npm test` testa login, permissões, leitura compartilhada, conflitos e logout em um banco temporário.
+`npm test` testa login, permissões, leitura compartilhada, conflitos, logout, autorização do diretório e auditoria em um banco temporário.

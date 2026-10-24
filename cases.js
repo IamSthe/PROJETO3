@@ -57,7 +57,7 @@
       return;
     }
     if (record) {
-      content.innerHTML = `<button class="case-back" data-back>← Todos os casos</button><div class="cases-heading"><div><h2>${escape(record.name)}</h2><p>${escape(record.description||'')}</p></div><button data-edit="case">Editar</button></div><div class="cases-grid"></div>`;
+      content.innerHTML = `<button class="case-back" data-back>← Todos os casos</button><div class="cases-heading"><div><h2>${escape(record.name)}</h2><p>${escape(record.description||'')}</p></div><button data-custom-link>＋ Criar vínculo personalizado</button></div><div class="cases-grid"></div>`;
       return;
     }
     const terms=normalizeSearch(query).trim().split(/\s+/).filter(Boolean);
@@ -208,7 +208,24 @@
     quickNotesDialog.querySelectorAll('[data-remove-note]').forEach(button=>button.onclick=()=>{if(!isCaseAdmin()||!confirm('Excluir este recado?'))return;try{localStorage.setItem('bh-case-quick-notes',JSON.stringify(readCaseNotes().filter(note=>note.id!==button.dataset.removeNote)));openQuickNotes();}catch{quickNotesDialog.querySelector('.quick-note-error').textContent='Não foi possível excluir o recado.';}});
     if(!quickNotesDialog.open)quickNotesDialog.showModal();
   }
-  new MutationObserver(()=>{addDeleteButtons();addPasswordButtons();alignCaseActions();addClassificationFilter();updateCaseDescriptions();addCasePhotos();enhanceSearchTools();addInvestigationSubfolder();applyCaseFactionColors(content,cases);}).observe(content, {childList:true});
+  let caseNameFrame;
+  function fitCaseNames(){
+    cancelAnimationFrame(caseNameFrame);caseNameFrame=requestAnimationFrame(()=>{
+      const context=document.createElement('canvas').getContext('2d');
+      content.querySelectorAll('.case-card-open').forEach(card=>{
+        const title=card.querySelector('h3');if(!title||!card.clientWidth)return;
+        card.classList.remove('case-name-wide');title.style.fontSize='14px';
+        const style=getComputedStyle(title);context.font=style.fontWeight+' 14px '+style.fontFamily;
+        const width=context.measureText(title.textContent).width;
+        if(width>title.clientWidth*14/11)card.classList.add('case-name-wide');
+        const size=Math.min(14,14*Math.max(1,title.clientWidth-1)/Math.max(1,width));
+        title.style.fontSize=(Math.floor(size*100)/100)+'px';title.title=title.textContent;
+      });
+    });
+  }
+  let caseNameWidth=-1;new ResizeObserver(entries=>{const width=entries[0].contentRect.width;if(width!==caseNameWidth){caseNameWidth=width;fitCaseNames();}}).observe(content);
+  document.fonts?.ready.then(fitCaseNames);
+  new MutationObserver(()=>{addDeleteButtons();addPasswordButtons();alignCaseActions();addClassificationFilter();updateCaseDescriptions();addCasePhotos();enhanceSearchTools();addInvestigationSubfolder();applyCaseFactionColors(content,cases);fitCaseNames();}).observe(content, {childList:true});
   // The desktop is rendered before login; refresh admin actions once the user is known.
   new MutationObserver(() => render()).observe(document.querySelector('#taskbar-username'), {childList:true,characterData:true,subtree:true});
   const editor=document.createElement('dialog'); editor.className='rename-icon-dialog case-editor'; document.body.append(editor);
@@ -262,7 +279,7 @@
       try{persist(next);editor.close();render();}catch{editor.querySelector('p').textContent='Não foi possível salvar neste navegador. O armazenamento pode estar cheio.';}
     };editor.showModal();
   }
-  content.addEventListener('click',event=>{const button=event.target.closest('button');if(!button)return;if(button.hasAttribute('data-back')){if(folder)folder=null;else active=null;}if(button.dataset.case)active=button.dataset.case;if(button.dataset.folder)folder=button.dataset.folder;if(button.dataset.filter)filter=button.dataset.filter;if(button.hasAttribute('data-new-case'))return edit('case');if(button.hasAttribute('data-new-folder'))return edit('folder');if(button.dataset.editId)return edit('case',button.dataset.editId);if(button.dataset.edit)return edit(button.dataset.edit);render();});
+  content.addEventListener('click',event=>{const button=event.target.closest('button');if(!button)return;if(button.hasAttribute('data-custom-link')){folder='@investigation';render();content.createCustomLink?.();return;}if(button.hasAttribute('data-back')){if(folder)folder=null;else active=null;}if(button.dataset.case)active=button.dataset.case;if(button.dataset.folder)folder=button.dataset.folder;if(button.dataset.filter)filter=button.dataset.filter;if(button.hasAttribute('data-new-case'))return edit('case');if(button.hasAttribute('data-new-folder'))return edit('folder');if(button.dataset.editId)return edit('case',button.dataset.editId);if(button.dataset.edit)return edit(button.dataset.edit);render();});
   content.addEventListener('input',event=>{
     if(!event.target.matches('.cases-search'))return;
     query=event.target.value;

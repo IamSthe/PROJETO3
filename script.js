@@ -1,6 +1,10 @@
 const boot = document.querySelector('#boot');
 const desktop = document.querySelector('#desktop');
 function desktopSymbol(name) {
+  if(name==='folder'){
+    const id='bh-folder-'+(desktopSymbol.folderCount=(desktopSymbol.folderCount||0)+1);
+    return `<svg class="metallic-icon" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="${id}-metal" x2=".3" y2="1"><stop stop-color="#e0e5e8"/><stop offset=".24" stop-color="#a1a9ae"/><stop offset=".55" stop-color="#687177"/><stop offset="1" stop-color="#30373b"/></linearGradient><linearGradient id="${id}-front" x2=".2" y2="1"><stop stop-color="#b5bdc2"/><stop offset=".1" stop-color="#818b92"/><stop offset="1" stop-color="#31383d"/></linearGradient></defs><path d="M7 14Q7 10 11 10h15l6 6h20q5 0 5 5v29H7Z" fill="url(#${id}-metal)" stroke="#899298"/><path d="M8 20h47v30H8Z" fill="#dae0e3"/><path d="M5 25q0-4 5-4h45q5 0 5 4l-2 28q0 3-4 3H10q-4 0-4-4Z" fill="url(#${id}-front)" stroke="#8c959b"/><path d="M9 23h46" stroke="#ecf0f2" stroke-opacity=".6"/></svg>`;
+  }
   return `<svg class="metallic-icon" viewBox="0 0 64 64" aria-hidden="true"><use href="assents/desktop-icons.svg#${name}"></use></svg>`;
 }
 const desktopSymbols = {case:'folder',evidence:'folder',database:'database',cameras:'camera',audio:'audio',trash:'trash'};
@@ -8,9 +12,43 @@ document.querySelectorAll('.desktop-icon').forEach(button => {
   button.firstElementChild.innerHTML = desktopSymbol(desktopSymbols[button.dataset.open]);
 });
 document.querySelectorAll('.window-app-icon').forEach(element => {
-  element.innerHTML = desktopSymbol(element.closest('[data-window]').dataset.window === 'case' ? 'folder' : 'document');
+  element.innerHTML = desktopSymbol(['case','blackhearts'].includes(element.closest('[data-window]').dataset.window) ? 'folder' : 'document');
+});
+// Keep the same department identity on every folder screen, including navigation redraws.
+document.querySelectorAll('.window > .window-content').forEach(content => {
+  const syncFolderBrand = () => {
+    const existing = content.querySelector(':scope > .folder-brand-header');
+    if (content.querySelector('.iw-brand')) { existing?.remove(); return; }
+    if (existing) return;
+    const brand = document.createElement('header');
+    brand.className = 'folder-brand-header';
+    brand.innerHTML = '<img src="assents/simbolo.png" alt="Brasão Blackhearts"><div><strong>BLACKHEARTS</strong><small>DEPARTAMENTO DE INVESTIGAÇÃO</small></div>';
+    content.prepend(brand);
+  };
+  new MutationObserver(syncFolderBrand).observe(content, {childList:true});
+  syncFolderBrand();
 });
 document.querySelectorAll('.menu-row > span').forEach(element => element.innerHTML = desktopSymbol('document'));
+// Desktop evidence notebook is independent from each case's evidence notes.
+(() => {
+  const content=document.querySelector('.evidence-content');if(!content)return;
+  const storageKey='bh-desktop-evidence-notes-v1';
+  const paragraphs=[...content.querySelectorAll(':scope > p')];
+  const initial=paragraphs.map(p=>p.textContent).join('\n\n');
+  const form=document.createElement('form');form.className='desktop-evidence-notepad';
+  form.innerHTML='<textarea aria-label="Anotações de evidências" maxlength="20000" spellcheck="true"></textarea><button type="button" data-add-line>＋ Adicionar linha</button><p role="status" aria-live="polite"></p><footer><button type="submit">Salvar</button></footer>';
+  const input=form.querySelector('textarea'),status=form.querySelector('[role="status"]');
+  try{input.value=localStorage.getItem(storageKey)??initial;}catch{input.value=initial;}
+  paragraphs.forEach(p=>p.remove());content.append(form);
+  form.querySelector('[data-add-line]').onclick=()=>{
+    const numbers=[...input.value.matchAll(/\bEV-(\d+)\b/gi)].map(match=>Number(match[1]));
+    const entry=(input.value.trimEnd()?'\n\n':'')+'EV-'+String(Math.max(0,...numbers)+1).padStart(3,'0')+' — ';
+    if(input.value.trimEnd().length+entry.length>input.maxLength){status.textContent='Limite de texto atingido.';return;}
+    input.value=input.value.trimEnd()+entry;input.focus();input.setSelectionRange(input.value.length,input.value.length);input.scrollTop=input.scrollHeight;status.textContent='Nova linha adicionada. Clique em Salvar.';
+  };
+  form.onsubmit=event=>{event.preventDefault();try{localStorage.setItem(storageKey,input.value);status.textContent='Evidências salvas.';}catch{status.textContent='Não foi possível salvar. Verifique o armazenamento do navegador.';}};
+  input.addEventListener('input',()=>{status.textContent='Alterações não salvas.';});
+})();
 document.querySelector('.taskbar-app').innerHTML = desktopSymbol('folder');
 const volumeIcon = document.querySelector('.volume-icon');
 volumeIcon.setAttribute('role', 'button');
@@ -34,7 +72,7 @@ function updateSiteVolume() {
   volumeIcon.classList.toggle('is-muted', siteVolume === 0);
   volumeIcon.setAttribute('aria-label', `Volume do site: ${siteVolume}%`);
   localStorage.setItem('bh-site-volume', siteVolume);
-  document.querySelectorAll('audio,video').forEach(media => media.volume = siteVolume / 100);
+  document.querySelectorAll('audio,video').forEach(media => {const scale=Number(media.dataset.volumeScale??1);media.volume=siteVolume/100*(Number.isFinite(scale)?Math.max(0,Math.min(1,scale)):1);});
 }
 async function playVolumeTone() {
   if (!siteVolume) return;
@@ -252,7 +290,9 @@ function showToast(message) {
 const labels = {case:'Caso 04-2026',evidence:'Evidências',database:'Banco de dados',cameras:'Câmeras',audio:'Áudios',trash:'Lixeira',report:'Relatório inicial',timeline:'Linha do tempo',suspects:'Suspeitos'};
 document.querySelectorAll('[data-open]').forEach(button => button.addEventListener('click', () => {
   const name = button.dataset.open;
-  if (name === 'case' || name === 'evidence') {
+  if (name === 'evidence') { window.openBlackheartsFolder?.(); return; }
+  if (name === 'database') return; // The second CMD now belongs to Banco de dados.
+  if (name === 'case') {
     const win = document.querySelector(`[data-window="${name}"]`);
     win.classList.remove('hidden','minimized');
     bringForward(win);

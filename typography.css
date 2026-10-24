@@ -1,0 +1,6 @@
+/* One typeface across the desktop, folders, dialogs, terminals and family archive.
+   Override only the family: preserve each component's size, weight and spacing. */
+:root{--blackhearts-font:Inter,"Segoe UI",Arial,sans-serif}
+html,body,body *,body *::before,body *::after{
+  font-family:var(--blackhearts-font) !important;
+}

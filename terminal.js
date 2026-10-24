@@ -5,9 +5,12 @@
   const task=document.createElement('button');task.className='window-task terminal-task';task.hidden=true;task.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="17" rx="2"/><path d="m6 8 4 4-4 4m7 0h5"/></svg>';task.title='Blackhearts Secure Terminal';task.setAttribute('aria-label','Restaurar terminal');document.querySelector('.window-tasks').after(task);
   const output=panel.querySelector('.terminal-output'),progress=panel.querySelector('.terminal-progress'),status=panel.querySelector('.terminal-status'),skip=panel.querySelector('[data-skip]'),sound=panel.querySelector('input');
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+  const timing=Object.freeze({loading:6800,hold:2000});
   sound.closest('label').remove();
   panel.querySelector('.terminal-toolbar').style.justifyContent = 'flex-end';
   let frame=0,startTime=0,completed=false,nodes=[],generation=0,context,lastSound=0,autoCloseTimer;
+  // This preference belongs only to the folder's second CMD, not the login CMD.
+  let typingSoundEnabled=true;try{typingSoundEnabled=localStorage.getItem('bh-directory-terminal-sound')!=='off';}catch{}
   function closeTerminal() {
     clearTimeout(autoCloseTimer);
     generation++;
@@ -62,7 +65,21 @@
   function finish(){if(completed)return;completed=true;nodes.forEach((node,i)=>node.textContent=lines[i][2]);const message=document.createElement('div');message.className='terminal-confirmation';message.innerHTML='<strong>IDENTIDADE CONFIRMADA</strong><strong>ACESSO AUTORIZADO — BLACKHEARTS</strong><p>Bem-vindo, Investigador. Seu ambiente operacional está pronto.</p><span>investigador@blackhearts:~$ <b class="terminal-cursor">▌</b></span>';output.append(message);output.scrollTop=output.scrollHeight;progress.style.setProperty('--progress','100%');progress.setAttribute('aria-valuenow','100');status.textContent='Acesso autorizado. Ambiente pronto.';skip.hidden=true;}
   function minimize(){cancelAnimationFrame(frame);finish();task.hidden=false;task.classList.add('is-minimized');panel.classList.add('terminal-minimizing');const current=++generation;setTimeout(()=>{if(current===generation){panel.hidden=true;panel.classList.remove('terminal-minimizing');}},320);}
   function restore(){generation++;panel.classList.remove('terminal-minimizing');panel.hidden=false;task.hidden=false;task.classList.remove('is-minimized');panel.style.zIndex=++topZ+100;output.scrollTop=output.scrollHeight;}
-  function animate(now){const elapsed=now-startTime;if(!completed){let changed=false;lines.forEach(([at,duration,text],i)=>{if(elapsed<at)return;const count=duration&&!reduced.matches?Math.min(text.length,Math.floor(Math.pow(Math.min(1,(elapsed-at)/duration),.85)*text.length)):text.length;const next=text.slice(0,count);if(nodes[i].textContent!==next){nodes[i].textContent=next;changed=true;}});if(changed){output.scrollTop=output.scrollHeight;tick(now);}const percent=Math.min(100,Math.round(elapsed/6800*100));progress.style.setProperty('--progress',percent+'%');progress.setAttribute('aria-valuenow',String(percent));if(elapsed>=6800)finish();}if(elapsed>=8800){minimize();return;}frame=requestAnimationFrame(animate);}
+  function renderTimeline(target,items,timeline,elapsed,now,options={}){let changed=false;const animateText=options.animateText??!reduced.matches;timeline.forEach(([at,duration,text],i)=>{if(options.typingCursor)items[i].classList.toggle('is-typing',animateText&&duration>0&&elapsed>=at&&elapsed<at+duration);if(elapsed<at)return;const count=duration&&animateText?Math.min(text.length,Math.floor(Math.pow(Math.min(1,(elapsed-at)/duration),.85)*text.length)):text.length;const next=text.slice(0,count);if(items[i].textContent!==next){items[i].textContent=next;changed=true;}});if(changed){target.scrollTop=target.scrollHeight;if(!options.soundDisabled)tick(now);}}
+  function animate(now){const elapsed=now-startTime;if(!completed){renderTimeline(output,nodes,lines,elapsed,now);const percent=Math.min(100,Math.round(elapsed/timing.loading*100));progress.style.setProperty('--progress',percent+'%');progress.setAttribute('aria-valuenow',String(percent));if(elapsed>=timing.loading)finish();}if(elapsed>=timing.loading+timing.hold){minimize();return;}frame=requestAnimationFrame(animate);}
+  window.BHTerminal={
+    timing,get reducedMotion(){return reduced.matches;},
+    get soundEnabled(){return typingSoundEnabled;},set soundEnabled(value){typingSoundEnabled=!!value;try{localStorage.setItem('bh-directory-terminal-sound',typingSoundEnabled?'on':'off');}catch{}},
+    async activateAudio(){try{context ||= new (window.AudioContext||window.webkitAudioContext)();await context.resume();}catch{}},
+    play(target,messages,signal,options={}){
+      const typingDurations=lines.filter(([,duration])=>duration>0).map(([,duration])=>duration),animateText=options.animateText??!reduced.matches;let at=0;
+      const timeline=messages.map(([text,style=''],index)=>{const duration=animateText?Math.max(typingDurations[index%typingDurations.length],text.length*(options.characterDelay||0)):0,entry=[at,duration,text,style];at+=duration+(animateText?150:0);return entry;});
+      const extra=animateText?Math.max(0,(options.duration||0)-at):0;
+      timeline.forEach((entry,i)=>entry[0]+=extra*i/Math.max(1,timeline.length));at+=extra;
+      const items=timeline.map(([, , ,style])=>{const line=document.createElement('div');line.className='terminal-line '+style;target.append(line);return line;});
+      return new Promise((resolve,reject)=>{let raf;const started=performance.now();const cancel=()=>{cancelAnimationFrame(raf);reject(new DOMException('Cancelado','AbortError'));};if(signal.aborted){cancel();return;}signal.addEventListener('abort',cancel,{once:true});function step(now){renderTimeline(target,items,timeline,now-started,now,{typingCursor:true,animateText,soundDisabled:!typingSoundEnabled});options.onProgress?.(at?Math.min(1,(now-started)/at):1);if(now-started>=at){signal.removeEventListener('abort',cancel);resolve();}else raf=requestAnimationFrame(step);}raf=requestAnimationFrame(step);});
+    }
+  };
   function start(){cancelAnimationFrame(frame);completed=false;output.replaceChildren();lines[5][2]='[SYS] ID de sessão: BH-'+crypto.randomUUID().slice(0,8).toUpperCase();nodes=lines.map(([, , ,name])=>{const node=document.createElement('div');node.className='terminal-line '+name;output.append(node);return node;});skip.hidden=false;status.textContent='Inicializando ambiente…';restore();startTime=performance.now();frame=requestAnimationFrame(animate);}
   skip.onclick=minimize;panel.querySelector('[data-min]').onclick=minimize;task.onclick=restore;
   const personalizedPrompt = new MutationObserver(() => {
